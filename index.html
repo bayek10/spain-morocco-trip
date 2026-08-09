@@ -727,7 +727,7 @@
         { id: 'granada', name: 'Granada', country: 'Spain', lat: 37.1773, lon: -3.5986 },
         { id: 'seville', name: 'Seville', country: 'Spain', lat: 37.3891, lon: -5.9845 },
         { id: 'cadiz', name: 'Cádiz', country: 'Spain', lat: 36.5271, lon: -6.2886 },
-        { id: 'el-palmar', name: 'El Palmar de Vejer', country: 'Spain', lat: 36.2197, lon: -6.0592, activity: 'Surf' },
+        { id: 'conil', name: 'Conil de la Frontera', country: 'Spain', lat: 36.27719, lon: -6.0885, activity: 'Surf' },
         { id: 'tarifa', name: 'Tarifa', country: 'Spain', lat: 36.0143, lon: -5.6044 },
         { id: 'cordoba', name: 'Córdoba', country: 'Spain', lat: 37.8882, lon: -4.7794 },
         { id: 'ronda', name: 'Ronda', country: 'Spain', lat: 36.7462, lon: -5.1612 },
@@ -915,16 +915,19 @@
         try {
           const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY));
           if (!Array.isArray(parsed)) return [];
-          return parsed.filter(stop => stop && typeof stop.name === 'string' && Number.isFinite(Number(stop.lat)) && Number.isFinite(Number(stop.lon))).map(stop => ({
-            id: String(stop.id || cryptoId()),
-            cityId: stop.cityId ? String(stop.cityId) : null,
-            name: stop.cityId === 'el-palmar' ? 'El Palmar de Vejer' : String(stop.name).slice(0, 50),
-            country: stop.country === 'Spain' ? 'Spain' : 'Morocco',
-            lat: Number(stop.lat),
-            lon: Number(stop.lon),
-            days: Math.max(0, Math.min(30, Number(stop.days) || 0)),
-            notes: String(stop.notes || '').slice(0, 500)
-          }));
+          return parsed.filter(stop => stop && typeof stop.name === 'string' && Number.isFinite(Number(stop.lat)) && Number.isFinite(Number(stop.lon))).map(stop => {
+            const migrateSurfStop = stop.cityId === 'el-palmar';
+            return {
+              id: String(stop.id || cryptoId()),
+              cityId: migrateSurfStop ? 'conil' : (stop.cityId ? String(stop.cityId) : null),
+              name: migrateSurfStop ? 'Conil de la Frontera' : String(stop.name).slice(0, 50),
+              country: stop.country === 'Spain' ? 'Spain' : 'Morocco',
+              lat: migrateSurfStop ? 36.27719 : Number(stop.lat),
+              lon: migrateSurfStop ? -6.0885 : Number(stop.lon),
+              days: Math.max(0, Math.min(30, Number(stop.days) || 0)),
+              notes: String(stop.notes || '').slice(0, 500)
+            };
+          });
         } catch (_) {
           return [];
         }
@@ -1301,7 +1304,7 @@
           const label = svg('text', { class: 'pin-label', y: -29 });
           label.textContent = stop.name;
           const days = svg('text', { class: 'pin-days', y: 29 });
-          days.textContent = `${formatDays(stop.days)} ${Number(stop.days) === 1 ? 'day' : 'days'}${stop.cityId === 'el-palmar' ? ' · surf' : ''}`;
+          days.textContent = `${formatDays(stop.days)} ${Number(stop.days) === 1 ? 'day' : 'days'}${stop.cityId === 'conil' ? ' · surf' : ''}`;
           group.append(number, label, days);
           group.addEventListener('click', () => openDialog(stop));
           group.addEventListener('keydown', event => {
