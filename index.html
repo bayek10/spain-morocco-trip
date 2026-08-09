@@ -309,6 +309,30 @@
     .route-line { fill: none; stroke: var(--terracotta); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
     .route-shadow { fill: none; stroke: rgba(255,255,255,.8); stroke-width: 8; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
     .route-ferry { fill: none; stroke: var(--blue-dark); stroke-width: 4; stroke-dasharray: 8 7; vector-effect: non-scaling-stroke; }
+    .route-time-label { overflow: visible; pointer-events: none; }
+    .route-time-pill {
+      width: 140px;
+      min-height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3px 7px;
+      border: 1px solid rgba(25,57,54,.16);
+      border-radius: 999px;
+      color: var(--blue-dark);
+      background: rgba(255,253,248,.94);
+      box-shadow: 0 3px 12px rgba(25,57,54,.12);
+      font-size: 10px;
+      font-weight: 850;
+      line-height: 1.15;
+      text-align: center;
+      white-space: pre-line;
+    }
+    .route-time-pill.is-highlight {
+      border-color: rgba(206,85,52,.45);
+      color: #8d341f;
+      background: rgba(255,238,218,.96);
+    }
 
     .catalog-city { cursor: pointer; }
     .catalog-city circle { fill: rgba(25,57,54,.3); stroke: var(--paper); stroke-width: 2; vector-effect: non-scaling-stroke; transition: r .15s ease, fill .15s ease; }
@@ -759,6 +783,15 @@
         { cityId: 'marrakech', days: 3 }
       ];
 
+      const SPAIN_TRAVEL_TIMES = {
+        'malaga>granada': { label: 'Train ≈1h25', dx: 70, dy: 18 },
+        'granada>cordoba': { label: 'Train ≈1h45', dx: 110, dy: -30 },
+        'cordoba>seville': { label: 'Train 45m · wins\nCar ≈1h30', dx: -100, dy: -28, highlight: true },
+        'seville>cadiz': { label: 'Train ≈1h40', dx: -105, dy: -23 },
+        'cadiz>conil': { label: 'No train\nBus ≈1h · car 35m', dx: -108, dy: 43, highlight: true },
+        'conil>tarifa': { label: 'No train\nBus/car ≈55m', dx: 150, dy: 25 }
+      };
+
       // Natural Earth 1:110m country outlines, projected locally below.
       const countryPolygons = {
         spain: [[-7.453726,37.097788],[-7.537105,37.428904],[-7.166508,37.803894],[-7.029281,38.075764],[-7.374092,38.373059],[-7.098037,39.030073],[-7.498632,39.629571],[-7.066592,39.711892],[-7.026413,40.184524],[-6.86402,40.330872],[-6.851127,41.111083],[-6.389088,41.381815],[-6.668606,41.883387],[-7.251309,41.918346],[-7.422513,41.792075],[-8.013175,41.790886],[-8.263857,42.280469],[-8.671946,42.134689],[-9.034818,41.880571],[-8.984433,42.592775],[-9.392884,43.026625],[-7.97819,43.748338],[-6.754492,43.567909],[-5.411886,43.57424],[-4.347843,43.403449],[-3.517532,43.455901],[-1.901351,43.422802],[-1.502771,43.034014],[0.338047,42.579546],[0.701591,42.795734],[1.826793,42.343385],[2.985999,42.473015],[3.039484,41.89212],[2.091842,41.226089],[0.810525,41.014732],[0.721331,40.678318],[0.106692,40.123934],[-0.278711,39.309978],[0.111291,38.738514],[-0.467124,38.292366],[-0.683389,37.642354],[-1.438382,37.443064],[-2.146453,36.674144],[-3.415781,36.6589],[-4.368901,36.677839],[-4.995219,36.324708],[-5.37716,35.94685],[-5.866432,36.029817],[-6.236694,36.367677],[-6.520191,36.942913],[-7.453726,37.097788]],
@@ -857,6 +890,11 @@
           node.setAttribute('transform', `translate(${x} ${y}) scale(${inverseScale.toFixed(4)})`);
         });
         els.catalogLayer.querySelectorAll('.catalog-fo').forEach(node => {
+          const x = node.getAttribute('data-map-x');
+          const y = node.getAttribute('data-map-y');
+          node.setAttribute('transform', `translate(${x} ${y}) scale(${inverseScale.toFixed(4)})`);
+        });
+        els.routeLayer.querySelectorAll('.route-time-label').forEach(node => {
           const x = node.getAttribute('data-map-x');
           const y = node.getAttribute('data-map-y');
           node.setAttribute('transform', `translate(${x} ${y}) scale(${inverseScale.toFixed(4)})`);
@@ -1065,9 +1103,10 @@
       }
 
       function itineraryText() {
-        return buildSchedule().map((stop, index) => (
-          `${index + 1}. ${stop.name} — ${formatDays(stop.days)} ${Number(stop.days) === 1 ? 'day' : 'days'} — Arrive ${formatCopyMoment(stop.scheduleStart)} · Leave ${formatCopyMoment(stop.scheduleEnd)}`
-        )).join('\n');
+        return buildSchedule().map((stop, index) => {
+          const summary = `${index + 1}. ${stop.name} — ${formatDays(stop.days)} ${Number(stop.days) === 1 ? 'day' : 'days'} — Arrive ${formatCopyMoment(stop.scheduleStart)} · Leave ${formatCopyMoment(stop.scheduleEnd)}`;
+          return stop.notes ? `${summary}\n   Description: ${stop.notes}` : summary;
+        }).join('\n\n');
       }
 
       function fallbackCopy(text) {
@@ -1270,6 +1309,28 @@
           for (let i = 0; i < schedule.length - 1; i += 1) {
             const a = schedule[i];
             const b = schedule[i + 1];
+            const travel = SPAIN_TRAVEL_TIMES[`${a.cityId}>${b.cityId}`];
+            if (travel) {
+              const pa = project(a.lon, a.lat);
+              const pb = project(b.lon, b.lat);
+              const x = ((pa.x + pb.x) / 2) + travel.dx;
+              const y = ((pa.y + pb.y) / 2) + travel.dy;
+              const label = svg('foreignObject', {
+                class: 'route-time-label',
+                x: -70,
+                y: -16,
+                width: 140,
+                height: 38,
+                'data-map-x': x.toFixed(1),
+                'data-map-y': y.toFixed(1),
+                transform: `translate(${x.toFixed(1)} ${y.toFixed(1)})`
+              });
+              const pill = document.createElement('div');
+              pill.className = `route-time-pill${travel.highlight ? ' is-highlight' : ''}`;
+              pill.textContent = travel.label;
+              label.appendChild(pill);
+              els.routeLayer.appendChild(label);
+            }
             if ((a.cityId === 'tarifa' && b.cityId === 'tangier') || (a.cityId === 'tangier' && b.cityId === 'tarifa')) {
               const pa = project(a.lon, a.lat);
               const pb = project(b.lon, b.lat);
