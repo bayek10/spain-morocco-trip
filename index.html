@@ -1,0 +1,1488 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Between Two Shores — Trip Visualizer</title>
+  <style>
+    :root {
+      --ink: #193936;
+      --ink-soft: #5d706d;
+      --cream: #f7f1e6;
+      --paper: #fffdf8;
+      --ocean: #dcefee;
+      --ocean-deep: #b8deda;
+      --land: #ead9bc;
+      --land-2: #e1cda9;
+      --terracotta: #c65e3b;
+      --terracotta-dark: #9f452b;
+      --blue: #2f7f83;
+      --blue-dark: #225e62;
+      --gold: #d6a241;
+      --line: rgba(25, 57, 54, .14);
+      --shadow: 0 18px 55px rgba(31, 57, 52, .12);
+      --radius: 22px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 0 0, rgba(214,162,65,.14), transparent 28rem),
+        var(--cream);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+      outline: 3px solid rgba(47,127,131,.28);
+      outline-offset: 2px;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 20px 28px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(247,241,230,.88);
+      backdrop-filter: blur(14px);
+      position: relative;
+      z-index: 5;
+    }
+
+    .brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
+    .brand-mark {
+      width: 44px;
+      height: 44px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      color: var(--paper);
+      background: var(--ink);
+      box-shadow: 0 8px 25px rgba(25,57,54,.2);
+      flex: 0 0 auto;
+    }
+    .brand-mark svg { width: 23px; height: 23px; }
+    .eyebrow {
+      margin: 0 0 3px;
+      color: var(--terracotta);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+    h1 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(25px, 3vw, 38px);
+      font-weight: 500;
+      letter-spacing: -.025em;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .header-actions { display: flex; align-items: center; gap: 10px; }
+    .day-total {
+      min-width: 96px;
+      padding: 8px 13px;
+      text-align: right;
+      border-right: 1px solid var(--line);
+      margin-right: 2px;
+    }
+    .day-total strong { display: block; font-size: 20px; line-height: 1; }
+    .day-total span { color: var(--ink-soft); font-size: 11px; }
+
+    .primary-btn, .secondary-btn, .icon-btn, .text-btn {
+      border: 0;
+      border-radius: 999px;
+      transition: transform .15s ease, background .15s ease, color .15s ease, box-shadow .15s ease;
+    }
+    .primary-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 42px;
+      padding: 10px 17px;
+      color: #fff;
+      background: var(--terracotta);
+      box-shadow: 0 8px 22px rgba(198,94,59,.22);
+      font-weight: 800;
+    }
+    .primary-btn:hover { background: var(--terracotta-dark); transform: translateY(-1px); }
+    .primary-btn svg, .secondary-btn svg, .icon-btn svg { width: 17px; height: 17px; }
+    .secondary-btn {
+      min-height: 40px;
+      padding: 9px 15px;
+      color: var(--ink);
+      background: rgba(25,57,54,.07);
+      font-weight: 750;
+    }
+    .secondary-btn:hover { background: rgba(25,57,54,.12); }
+    .header-copy-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 42px;
+      padding: 10px 15px;
+      background: rgba(25,57,54,.08);
+    }
+    .icon-btn {
+      width: 34px;
+      height: 34px;
+      display: inline-grid;
+      place-items: center;
+      color: var(--ink-soft);
+      background: transparent;
+    }
+    .icon-btn:hover { color: var(--ink); background: rgba(25,57,54,.08); }
+    .text-btn { padding: 6px 8px; color: var(--blue-dark); background: transparent; font-weight: 750; }
+    .text-btn:hover { background: rgba(47,127,131,.09); }
+    .danger { color: #a23f34; }
+
+    .workspace {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(315px, 380px) 1fr;
+    }
+
+    .sidebar {
+      min-height: 0;
+      padding: 24px 20px 30px 28px;
+      border-right: 1px solid var(--line);
+      overflow: auto;
+    }
+    .sidebar-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 15px;
+    }
+    .sidebar h2 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 22px;
+      font-weight: 500;
+    }
+    .sidebar-hint { margin: 4px 0 0; color: var(--ink-soft); font-size: 12px; }
+
+    .trip-dates {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 9px 12px;
+      margin: 0 0 16px;
+      padding: 13px 14px;
+      border: 1px solid rgba(25,57,54,.12);
+      border-radius: 17px;
+      background: rgba(255,253,248,.58);
+    }
+    .date-field { display: grid; gap: 5px; }
+    .date-field label { color: var(--ink-soft); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
+    .date-field input { min-height: 36px; padding: 7px 8px; border-radius: 9px; font-size: 12px; }
+    .date-status { grid-column: 1 / -1; display: flex; align-items: center; gap: 7px; color: var(--blue-dark); font-size: 11px; font-weight: 750; }
+    .date-status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--blue); }
+    .date-status.over { color: #a23f34; }
+    .date-status.over::before { background: #a23f34; }
+
+    .route-list { display: grid; gap: 10px; }
+
+    .stop-card {
+      position: relative;
+      display: grid;
+      grid-template-columns: 34px minmax(0,1fr) auto;
+      align-items: center;
+      gap: 10px;
+      padding: 13px 10px 13px 12px;
+      border: 1px solid transparent;
+      border-radius: 17px;
+      background: rgba(255,253,248,.72);
+      box-shadow: 0 7px 24px rgba(42,69,64,.06);
+      transition: border .15s ease, transform .15s ease, background .15s ease;
+    }
+    .stop-card:hover { border-color: rgba(47,127,131,.25); background: var(--paper); }
+    .stop-card.dragging { opacity: .45; transform: scale(.985); }
+    .stop-card.drag-over { border-color: var(--blue); }
+
+    .drag-handle {
+      width: 34px;
+      height: 44px;
+      display: grid;
+      place-items: center;
+      border: 0;
+      background: transparent;
+      color: #83918f;
+      cursor: grab;
+      touch-action: none;
+    }
+    .drag-handle:active { cursor: grabbing; }
+    .drag-handle svg { width: 18px; }
+
+    .stop-copy { min-width: 0; }
+    .stop-title-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .stop-number {
+      width: 21px;
+      height: 21px;
+      display: inline-grid;
+      place-items: center;
+      flex: 0 0 auto;
+      border-radius: 50%;
+      color: #fff;
+      background: var(--terracotta);
+      font-size: 11px;
+      font-weight: 850;
+    }
+    .stop-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 850; }
+    .stop-meta { margin-top: 3px; color: var(--ink-soft); font-size: 12px; }
+    .stop-dates { margin-top: 5px; color: var(--blue-dark); font-size: 11px; font-weight: 800; }
+    .stop-note { margin-top: 6px; overflow: hidden; color: var(--ink); font-size: 12px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .stop-actions { display: flex; align-items: center; gap: 1px; }
+
+    .empty-state {
+      padding: 28px 22px;
+      text-align: center;
+      border: 1px dashed rgba(25,57,54,.2);
+      border-radius: 20px;
+      background: rgba(255,253,248,.46);
+    }
+    .empty-state svg { width: 28px; color: var(--terracotta); }
+    .empty-state h3 { margin: 8px 0 5px; font-family: Georgia,serif; font-weight: 500; }
+    .empty-state p { margin: 0 0 12px; color: var(--ink-soft); font-size: 13px; line-height: 1.5; }
+
+    .map-panel {
+      position: relative;
+      min-width: 0;
+      min-height: 680px;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 22% 18%, rgba(255,255,255,.58), transparent 34%),
+        linear-gradient(145deg, #e5f4f2 0%, #c9e5e2 100%);
+      isolation: isolate;
+    }
+    .map-panel::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      opacity: .26;
+      background-image:
+        linear-gradient(rgba(34,94,98,.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(34,94,98,.06) 1px, transparent 1px);
+      background-size: 66px 66px;
+      mask-image: linear-gradient(to bottom, transparent, #000 15%, #000 85%, transparent);
+    }
+    #tripMap { width: 100%; height: 100%; min-height: 680px; display: block; cursor: grab; touch-action: none; user-select: none; }
+    .map-panel.is-panning #tripMap { cursor: grabbing; }
+
+    .sea-backdrop { fill: url(#oceanGradient); }
+    .sea-texture { fill: url(#seaPattern); opacity: .42; pointer-events: none; }
+    .country-shape { fill: url(#spainLandGradient); stroke: rgba(106,86,53,.34); stroke-width: 1.3; filter: url(#landShadow); vector-effect: non-scaling-stroke; }
+    .country-shape.morocco { fill: url(#moroccoLandGradient); }
+    .terrain-overlay { fill: url(#terrainPattern); stroke: none; opacity: .48; pointer-events: none; }
+    .country-label {
+      fill: rgba(71,76,64,.36);
+      font-family: Georgia,serif;
+      font-size: 20px;
+      font-style: italic;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      pointer-events: none;
+    }
+    .water-label { fill: rgba(34,94,98,.34); font-family: Georgia,serif; font-size: 14px; font-style: italic; letter-spacing: .08em; }
+    .route-line { fill: none; stroke: var(--terracotta); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+    .route-shadow { fill: none; stroke: rgba(255,255,255,.8); stroke-width: 8; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+    .route-ferry { fill: none; stroke: var(--blue-dark); stroke-width: 4; stroke-dasharray: 8 7; vector-effect: non-scaling-stroke; }
+
+    .catalog-city { cursor: pointer; }
+    .catalog-city circle { fill: rgba(25,57,54,.3); stroke: var(--paper); stroke-width: 2; vector-effect: non-scaling-stroke; transition: r .15s ease, fill .15s ease; }
+    .catalog-city text {
+      fill: rgba(25,57,54,.69);
+      paint-order: stroke;
+      stroke: rgba(247,241,230,.9);
+      stroke-width: 4;
+      stroke-linejoin: round;
+      font-size: 12px;
+      font-weight: 750;
+      pointer-events: none;
+    }
+    .catalog-city:hover circle, .catalog-city:focus circle { r: 7; fill: var(--blue-dark); }
+    .catalog-city.in-route { display: none; }
+    .catalog-fo { overflow: visible; }
+    .catalog-caption { pointer-events: none; }
+    .catalog-caption-box {
+      position: relative;
+      width: 180px;
+      height: 70px;
+      color: rgba(25,57,54,.72);
+      font-size: 12px;
+      font-weight: 800;
+      text-align: center;
+      white-space: nowrap;
+    }
+    .catalog-caption-box .label {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      text-shadow: 0 1px 0 var(--cream), 1px 0 0 var(--cream), 0 -1px 0 var(--cream), -1px 0 0 var(--cream);
+    }
+    .catalog-caption-box .activity-label {
+      position: absolute;
+      top: 18px;
+      left: 50%;
+      padding: 2px 6px;
+      border-radius: 999px;
+      color: var(--blue-dark);
+      background: rgba(255,253,248,.88);
+      font-size: 9px;
+      font-weight: 900;
+      letter-spacing: .03em;
+      transform: translateX(-50%);
+      box-shadow: 0 2px 7px rgba(25,57,54,.1);
+    }
+    .catalog-html-btn {
+      position: relative;
+      width: 38px;
+      height: 38px;
+      display: block;
+      padding: 0;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+    }
+    .catalog-html-btn .dot {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 9px;
+      height: 9px;
+      border: 2px solid var(--paper);
+      border-radius: 50%;
+      background: rgba(25,57,54,.42);
+      box-shadow: 0 1px 3px rgba(25,57,54,.16);
+      transform: translate(-50%, -50%);
+    }
+    .catalog-html-btn:hover, .catalog-html-btn:focus-visible { background: rgba(255,253,248,.68); }
+    .catalog-html-btn:hover .dot, .catalog-html-btn:focus-visible .dot { background: var(--blue-dark); }
+
+    .route-pin { cursor: pointer; filter: drop-shadow(0 4px 4px rgba(25,57,54,.2)); }
+    .route-pin .pin-halo { fill: rgba(255,255,255,.82); }
+    .route-pin .pin-body { fill: var(--terracotta); stroke: var(--paper); stroke-width: 3; vector-effect: non-scaling-stroke; }
+    .route-pin .pin-number { fill: #fff; font-size: 12px; font-weight: 900; text-anchor: middle; dominant-baseline: middle; pointer-events: none; }
+    .route-pin .pin-label { fill: var(--ink); paint-order: stroke; stroke: var(--paper); stroke-width: 5; stroke-linejoin: round; font-size: 13px; font-weight: 850; text-anchor: middle; pointer-events: none; }
+    .route-pin .pin-days { fill: var(--blue-dark); font-size: 10px; font-weight: 850; text-anchor: middle; paint-order: stroke; stroke: var(--paper); stroke-width: 4; stroke-linejoin: round; pointer-events: none; }
+
+    .map-key {
+      position: absolute;
+      left: 22px;
+      bottom: 20px;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      max-width: calc(100% - 44px);
+      padding: 9px 12px;
+      border: 1px solid rgba(25,57,54,.11);
+      border-radius: 999px;
+      color: var(--ink-soft);
+      background: rgba(255,253,248,.86);
+      box-shadow: 0 5px 20px rgba(25,57,54,.08);
+      backdrop-filter: blur(10px);
+      font-size: 11px;
+    }
+    .map-key-dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(25,57,54,.35); }
+
+    .map-tools {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      z-index: 4;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px;
+      border: 1px solid rgba(25,57,54,.12);
+      border-radius: 14px;
+      background: rgba(255,253,248,.9);
+      box-shadow: 0 10px 28px rgba(25,57,54,.12);
+      backdrop-filter: blur(12px);
+    }
+    .map-tool-btn {
+      width: 36px;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      border: 0;
+      border-radius: 10px;
+      color: var(--ink);
+      background: transparent;
+      font-size: 20px;
+      font-weight: 700;
+    }
+    .map-tool-btn:hover { background: rgba(47,127,131,.1); }
+    .map-tool-btn:disabled { color: rgba(25,57,54,.32); cursor: default; }
+    .map-tool-btn svg { width: 17px; height: 17px; }
+    .zoom-readout {
+      min-width: 46px;
+      padding: 0 5px;
+      color: var(--ink-soft);
+      text-align: center;
+      font-size: 10px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .toast {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      z-index: 10;
+      transform: translate(-50%, -12px);
+      padding: 9px 14px;
+      border-radius: 999px;
+      color: #fff;
+      background: rgba(25,57,54,.92);
+      box-shadow: var(--shadow);
+      font-size: 12px;
+      font-weight: 750;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .18s ease, transform .18s ease;
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    dialog {
+      width: min(520px, calc(100vw - 28px));
+      max-height: min(760px, calc(100vh - 28px));
+      padding: 0;
+      border: 0;
+      border-radius: 24px;
+      color: var(--ink);
+      background: var(--paper);
+      box-shadow: 0 28px 100px rgba(25,57,54,.28);
+      overflow: hidden;
+    }
+    dialog::backdrop { background: rgba(20,42,40,.48); backdrop-filter: blur(3px); }
+    .modal-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 22px 24px 14px; }
+    .modal-head h2 { margin: 0; font-family: Georgia,serif; font-size: 26px; font-weight: 500; }
+    .modal-body { padding: 6px 24px 22px; overflow: auto; }
+    .field { display: grid; gap: 7px; margin-top: 15px; }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    label { font-size: 12px; font-weight: 850; }
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid rgba(25,57,54,.2);
+      border-radius: 12px;
+      color: var(--ink);
+      background: #fffdf8;
+      transition: border .15s ease, box-shadow .15s ease;
+    }
+    input, select { min-height: 44px; padding: 10px 12px; }
+    textarea { min-height: 104px; padding: 12px; resize: vertical; line-height: 1.45; }
+    input:focus, select:focus, textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(47,127,131,.12); outline: 0; }
+    .field-help { color: var(--ink-soft); font-size: 11px; line-height: 1.45; }
+    .custom-fields { display: none; }
+    .custom-fields.show { display: block; }
+    .modal-actions { display: flex; align-items: center; justify-content: flex-end; gap: 9px; padding: 15px 24px 20px; border-top: 1px solid var(--line); background: rgba(247,241,230,.5); }
+    .form-error { min-height: 16px; margin: 10px 0 0; color: #a23f34; font-size: 12px; font-weight: 700; }
+
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+    @media (max-width: 850px) {
+      .topbar { padding: 16px 18px; }
+      .workspace { grid-template-columns: 1fr; }
+      .map-panel { min-height: 590px; order: 1; }
+      #tripMap { min-height: 590px; }
+      .sidebar { order: 2; border-right: 0; border-top: 1px solid var(--line); padding: 22px 18px 30px; overflow: visible; }
+    }
+
+    @media (max-width: 560px) {
+      .topbar { align-items: flex-start; gap: 8px; padding: 14px 12px; }
+      .header-actions { gap: 6px; }
+      .brand-mark { display: none; }
+      .eyebrow { display: none; }
+      h1 { margin-top: 7px; font-size: 23px; }
+      .day-total { min-width: 48px; padding: 5px 4px; border-right: 0; margin-right: 0; }
+      .day-total strong { font-size: 17px; }
+      .primary-btn .wide-label { display: none; }
+      .primary-btn { min-width: 42px; padding-inline: 12px; }
+      .header-copy-btn { width: 42px; padding-inline: 0; }
+      .header-copy-btn .wide-label { display: none; }
+      .map-panel, #tripMap { min-height: 500px; }
+      .field-row { grid-template-columns: 1fr; gap: 0; }
+      .trip-dates { grid-template-columns: 1fr 1fr; }
+      .modal-head, .modal-body { padding-left: 18px; padding-right: 18px; }
+      .modal-actions { padding-left: 18px; padding-right: 18px; }
+      .stop-card { grid-template-columns: 26px minmax(0,1fr) auto; gap: 7px; }
+      .drag-handle { width: 26px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 19c4.2-4.2 7.7-7.1 15.5-14.2"/><path d="m13.4 4.7 6.1.1-.8 5.8"/><circle cx="6" cy="18" r="2.2"/>
+          </svg>
+        </div>
+        <div>
+          <p class="eyebrow">Southern Spain · Morocco</p>
+          <h1>Between two shores</h1>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="day-total" aria-live="polite">
+          <strong id="totalDays">0</strong>
+          <span id="dayTotalLabel">trip days</span>
+        </div>
+        <button class="secondary-btn header-copy-btn" id="copyItineraryButton" type="button" aria-label="Copy itinerary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>
+          <span class="wide-label">Copy itinerary</span>
+        </button>
+        <button class="primary-btn" id="addStopButton" type="button" aria-label="Add stop">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          <span class="wide-label">Add stop</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <aside class="sidebar" aria-label="Trip itinerary">
+        <div class="sidebar-head">
+          <div>
+            <h2>Your route</h2>
+            <p class="sidebar-hint">Drag stops to reorder the journey.</p>
+          </div>
+          <span id="stopCount" class="sidebar-hint">0 stops</span>
+        </div>
+        <div class="trip-dates" aria-label="Trip dates">
+          <div class="date-field">
+            <label for="tripStartDate">Arrive in Spain</label>
+            <input id="tripStartDate" type="date" value="2026-08-23">
+          </div>
+          <div class="date-field">
+            <label for="tripEndDate">Fly home</label>
+            <input id="tripEndDate" type="date" value="2026-09-06">
+          </div>
+          <div id="dateStatus" class="date-status" aria-live="polite">14-day trip window</div>
+        </div>
+        <div id="routeList" class="route-list" aria-live="polite"></div>
+      </aside>
+
+      <section class="map-panel" aria-label="Map of southern Spain and Morocco">
+        <svg id="tripMap" viewBox="0 0 1000 760" role="img" aria-labelledby="mapTitle mapDesc">
+          <title id="mapTitle">Interactive trip map for southern Spain and Morocco</title>
+          <desc id="mapDesc">Suggested cities appear as small dots. Added itinerary stops appear as numbered pins connected in route order. Use the controls or scroll to zoom, then drag to pan.</desc>
+          <defs>
+            <linearGradient id="oceanGradient" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#e8f6f4"/>
+              <stop offset=".55" stop-color="#d2ebe8"/>
+              <stop offset="1" stop-color="#bcdedb"/>
+            </linearGradient>
+            <linearGradient id="spainLandGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#f0e2c7"/>
+              <stop offset="1" stop-color="#e3cda7"/>
+            </linearGradient>
+            <linearGradient id="moroccoLandGradient" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#e9d4ae"/>
+              <stop offset=".62" stop-color="#ddc294"/>
+              <stop offset="1" stop-color="#d4b887"/>
+            </linearGradient>
+            <pattern id="seaPattern" width="36" height="36" patternUnits="userSpaceOnUse">
+              <path d="M-8 18 Q 1 12 10 18 T 28 18 T 46 18" fill="none" stroke="#4d9695" stroke-opacity=".09" stroke-width="1"/>
+            </pattern>
+            <pattern id="terrainPattern" width="116" height="86" patternUnits="userSpaceOnUse">
+              <path d="M-18 54 C 8 27 34 75 60 47 S 112 35 138 58" fill="none" stroke="#836c4c" stroke-opacity=".13" stroke-width="1.1"/>
+              <path d="M-8 72 C 17 49 38 88 67 67 S 111 57 130 73" fill="none" stroke="#836c4c" stroke-opacity=".09" stroke-width=".9"/>
+            </pattern>
+            <filter id="landShadow" x="-10%" y="-10%" width="120%" height="125%">
+              <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#355f5c" flood-opacity=".16"/>
+            </filter>
+          </defs>
+          <g id="mapViewport">
+            <rect class="sea-backdrop" x="0" y="0" width="1000" height="760"/>
+            <rect class="sea-texture" x="0" y="0" width="1000" height="760"/>
+            <g id="countryLayer"></g>
+            <g aria-hidden="true">
+              <text class="country-label" x="570" y="78">Southern Spain</text>
+              <text class="country-label" x="420" y="610">Morocco</text>
+              <text class="water-label" x="178" y="355">Atlantic Ocean</text>
+              <text class="water-label" x="680" y="315">Mediterranean Sea</text>
+              <text class="water-label" x="422" y="245">Strait of Gibraltar</text>
+            </g>
+            <g id="routeLayer"></g>
+            <g id="catalogLayer"></g>
+            <g id="pinLayer"></g>
+          </g>
+        </svg>
+        <div class="map-tools" aria-label="Map zoom controls">
+          <button id="zoomOut" class="map-tool-btn" type="button" aria-label="Zoom out">−</button>
+          <span id="zoomLevel" class="zoom-readout" aria-live="polite">100%</span>
+          <button id="zoomIn" class="map-tool-btn" type="button" aria-label="Zoom in">+</button>
+          <button id="resetMap" class="map-tool-btn" type="button" aria-label="Reset map view">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></svg>
+          </button>
+        </div>
+        <div class="map-key"><span class="map-key-dot"></span><span>Tap a city · scroll to zoom · drag to move</span></div>
+        <div id="toast" class="toast" role="status" aria-live="polite"></div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="stopDialog" aria-labelledby="dialogTitle">
+    <form id="stopForm" method="dialog" novalidate>
+      <div class="modal-head">
+        <h2 id="dialogTitle">Add a stop</h2>
+        <button class="icon-btn" id="closeDialog" type="button" aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <label for="citySelect">City or area</label>
+          <select id="citySelect" required></select>
+        </div>
+
+        <div id="customFields" class="custom-fields">
+          <div class="field-row">
+            <div class="field">
+              <label for="customName">Place name</label>
+              <input id="customName" maxlength="50" placeholder="e.g. Asilah">
+            </div>
+            <div class="field">
+              <label for="customCountry">Country</label>
+              <select id="customCountry">
+                <option value="Spain">Spain</option>
+                <option value="Morocco">Morocco</option>
+              </select>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="customLat">Latitude</label>
+              <input id="customLat" type="number" min="29" max="39" step="0.0001" placeholder="35.0000">
+            </div>
+            <div class="field">
+              <label for="customLon">Longitude</label>
+              <input id="customLon" type="number" min="-11" max="0" step="0.0001" placeholder="-5.0000">
+            </div>
+          </div>
+          <p class="field-help">Coordinates place a custom pin on this regional map. You can copy them from any maps app.</p>
+        </div>
+
+        <div class="field">
+          <label for="daysInput">Days</label>
+          <input id="daysInput" type="number" min="0" max="30" step="0.5" value="2" inputmode="decimal" required>
+          <span class="field-help">Half-days are welcome. Use 0 for a pass-through stop.</span>
+        </div>
+
+        <div class="field">
+          <label for="notesInput">Notes</label>
+          <textarea id="notesInput" maxlength="500" placeholder="Riad ideas, restaurants, activities, transport notes…"></textarea>
+        </div>
+        <p id="formError" class="form-error" role="alert"></p>
+      </div>
+      <div class="modal-actions">
+        <button class="secondary-btn" id="cancelDialog" type="button">Cancel</button>
+        <button class="primary-btn" id="saveStop" type="submit">Save stop</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script>
+    (() => {
+      'use strict';
+
+      const STORAGE_KEY = 'between-two-shores-trip-v1';
+      const TRIP_META_KEY = 'between-two-shores-dates-v1';
+      const SVG_NS = 'http://www.w3.org/2000/svg';
+      const MAP = { minLon: -10.8, maxLon: -0.8, minLat: 29.3, maxLat: 38.5, width: 1000, height: 760 };
+
+      const cities = [
+        { id: 'malaga', name: 'Málaga', country: 'Spain', lat: 36.7213, lon: -4.4214 },
+        { id: 'granada', name: 'Granada', country: 'Spain', lat: 37.1773, lon: -3.5986 },
+        { id: 'seville', name: 'Seville', country: 'Spain', lat: 37.3891, lon: -5.9845 },
+        { id: 'cadiz', name: 'Cádiz', country: 'Spain', lat: 36.5271, lon: -6.2886 },
+        { id: 'el-palmar', name: 'El Palmar de Vejer', country: 'Spain', lat: 36.2197, lon: -6.0592, activity: 'Surf' },
+        { id: 'tarifa', name: 'Tarifa', country: 'Spain', lat: 36.0143, lon: -5.6044 },
+        { id: 'cordoba', name: 'Córdoba', country: 'Spain', lat: 37.8882, lon: -4.7794 },
+        { id: 'ronda', name: 'Ronda', country: 'Spain', lat: 36.7462, lon: -5.1612 },
+        { id: 'tangier', name: 'Tangier', country: 'Morocco', lat: 35.7595, lon: -5.8340 },
+        { id: 'chefchaouen', name: 'Chefchaouen', country: 'Morocco', lat: 35.1688, lon: -5.2636 },
+        { id: 'rabat', name: 'Rabat', country: 'Morocco', lat: 34.0209, lon: -6.8416 },
+        { id: 'marrakech', name: 'Marrakech', country: 'Morocco', lat: 31.6295, lon: -7.9811 },
+        { id: 'essaouira', name: 'Essaouira', country: 'Morocco', lat: 31.5085, lon: -9.7595 },
+        { id: 'tetouan', name: 'Tétouan', country: 'Morocco', lat: 35.5785, lon: -5.3684 },
+        { id: 'fes', name: 'Fès', country: 'Morocco', lat: 34.0181, lon: -5.0078 },
+        { id: 'casablanca', name: 'Casablanca', country: 'Morocco', lat: 33.5731, lon: -7.5898 },
+        { id: 'taghazout', name: 'Taghazout', country: 'Morocco', lat: 30.5426, lon: -9.6995 }
+      ];
+
+      // Natural Earth 1:110m country outlines, projected locally below.
+      const countryPolygons = {
+        spain: [[-7.453726,37.097788],[-7.537105,37.428904],[-7.166508,37.803894],[-7.029281,38.075764],[-7.374092,38.373059],[-7.098037,39.030073],[-7.498632,39.629571],[-7.066592,39.711892],[-7.026413,40.184524],[-6.86402,40.330872],[-6.851127,41.111083],[-6.389088,41.381815],[-6.668606,41.883387],[-7.251309,41.918346],[-7.422513,41.792075],[-8.013175,41.790886],[-8.263857,42.280469],[-8.671946,42.134689],[-9.034818,41.880571],[-8.984433,42.592775],[-9.392884,43.026625],[-7.97819,43.748338],[-6.754492,43.567909],[-5.411886,43.57424],[-4.347843,43.403449],[-3.517532,43.455901],[-1.901351,43.422802],[-1.502771,43.034014],[0.338047,42.579546],[0.701591,42.795734],[1.826793,42.343385],[2.985999,42.473015],[3.039484,41.89212],[2.091842,41.226089],[0.810525,41.014732],[0.721331,40.678318],[0.106692,40.123934],[-0.278711,39.309978],[0.111291,38.738514],[-0.467124,38.292366],[-0.683389,37.642354],[-1.438382,37.443064],[-2.146453,36.674144],[-3.415781,36.6589],[-4.368901,36.677839],[-4.995219,36.324708],[-5.37716,35.94685],[-5.866432,36.029817],[-6.236694,36.367677],[-6.520191,36.942913],[-7.453726,37.097788]],
+        portugal: [[-9.034818,41.880571],[-8.671946,42.134689],[-8.263857,42.280469],[-8.013175,41.790886],[-7.422513,41.792075],[-7.251309,41.918346],[-6.668606,41.883387],[-6.389088,41.381815],[-6.851127,41.111083],[-6.86402,40.330872],[-7.026413,40.184524],[-7.066592,39.711892],[-7.498632,39.629571],[-7.098037,39.030073],[-7.374092,38.373059],[-7.029281,38.075764],[-7.166508,37.803894],[-7.537105,37.428904],[-7.453726,37.097788],[-7.855613,36.838269],[-8.382816,36.97888],[-8.898857,36.868809],[-8.746101,37.651346],[-8.839998,38.266243],[-9.287464,38.358486],[-9.526571,38.737429],[-9.446989,39.392066],[-9.048305,39.755093],[-8.977353,40.159306],[-8.768684,40.760639],[-8.790853,41.184334],[-8.990789,41.543459],[-9.034818,41.880571]],
+        morocco: [[-2.169914,35.168396],[-1.792986,34.527919],[-1.733455,33.919713],[-1.388049,32.864015],[-1.124551,32.651522],[-1.307899,32.262889],[-2.616605,32.094346],[-3.06898,31.724498],[-3.647498,31.637294],[-3.690441,30.896952],[-4.859646,30.501188],[-5.242129,30.000443],[-6.060632,29.7317],[-7.059228,29.579228],[-8.674116,28.841289],[-8.66559,27.656426],[-8.817828,27.656426],[-8.794884,27.120696],[-9.413037,27.088476],[-9.735343,26.860945],[-10.189424,26.860945],[-10.551263,26.990808],[-11.392555,26.883424],[-11.71822,26.104092],[-12.030759,26.030866],[-12.500963,24.770116],[-13.89111,23.691009],[-14.221168,22.310163],[-14.630833,21.86094],[-14.750955,21.5006],[-17.002962,21.420734],[-17.020428,21.42231],[-16.973248,21.885745],[-16.589137,22.158234],[-16.261922,22.67934],[-16.326414,23.017768],[-15.982611,23.723358],[-15.426004,24.359134],[-15.089332,24.520261],[-14.824645,25.103533],[-14.800926,25.636265],[-14.43994,26.254418],[-13.773805,26.618892],[-13.139942,27.640148],[-13.121613,27.654148],[-12.618837,28.038186],[-11.688919,28.148644],[-10.900957,28.832142],[-10.399592,29.098586],[-9.564811,29.933574],[-9.814718,31.177736],[-9.434793,32.038096],[-9.300693,32.564679],[-8.657476,33.240245],[-7.654178,33.697065],[-6.912544,34.110476],[-6.244342,35.145865],[-5.929994,35.759988],[-5.193863,35.755182],[-4.591006,35.330712],[-3.640057,35.399855],[-2.604306,35.179093],[-2.169914,35.168396]]
+      };
+
+      // Higher-detail GeoJSON-derived coastlines keep coastal pins aligned with land.
+      const detailedCountryPolygons = {"spain":[[-1.79408,43.38602],[-1.79691,43.34113],[-1.75578,43.31855],[-1.74736,43.291],[-1.65491,43.29754],[-1.62189,43.247],[-1.58757,43.2516],[-1.55905,43.28408],[-1.43223,43.26501],[-1.4035,43.24333],[-1.39968,43.20674],[-1.42577,43.13528],[-1.48784,43.08182],[-1.45714,43.04507],[-1.36614,43.03332],[-1.34826,43.09308],[-1.28604,43.10918],[-1.31508,43.08288],[-1.29369,43.0552],[-1.14993,43.00572],[-1.02849,42.98671],[-0.94322,42.9479],[-0.75967,42.9465],[-0.74029,42.8848],[-0.6483,42.84979],[-0.56903,42.77264],[-0.53565,42.78421],[-0.53389,42.80801],[-0.42392,42.79067],[-0.32279,42.8425],[-0.23515,42.78623],[-0.16141,42.79535],[-0.15779,42.7607],[-0.11903,42.71685],[-0.03893,42.68515],[0.16917,42.72646],[0.23836,42.71037],[0.27539,42.66869],[0.35417,42.7175],[0.40928,42.68225],[0.65673,42.68799],[0.66645,42.71476],[0.63348,42.74478],[0.65074,42.76339],[0.63968,42.77468],[0.65632,42.83842],[0.70676,42.84658],[0.8129,42.83162],[0.92111,42.78437],[0.95026,42.79612],[1.08906,42.77132],[1.15149,42.70672],[1.34258,42.70866],[1.33824,42.69445],[1.36108,42.68672],[1.4293,42.59539],[1.40646,42.52924],[1.42899,42.53146],[1.44997,42.50407],[1.40759,42.48676],[1.4479,42.43465],[1.51663,42.4295],[1.54443,42.45036],[1.63952,42.46643],[1.65399,42.49653],[1.70701,42.50278],[1.92746,42.43689],[1.96374,42.36723],[2.00921,42.34708],[2.06326,42.35791],[2.13695,42.41622],[2.27741,42.42863],[2.42252,42.38369],[2.44557,42.35196],[2.51481,42.32566],[2.54809,42.35225],[2.66219,42.33902],[2.64028,42.37284],[2.69041,42.40617],[2.78859,42.41201],[2.85081,42.44837],[2.9337,42.47022],[3.02961,42.46565],[3.08615,42.42718],[3.18097,42.43148],[3.17018,42.39659],[3.18735,42.34951],[3.31772,42.32298],[3.26303,42.23985],[3.21013,42.23973],[3.17018,42.25967],[3.11883,42.21833],[3.12249,42.14049],[3.2145,42.06833],[3.1959,42.03312],[3.20786,41.99002],[3.23569,41.96552],[3.23219,41.94603],[3.15016,41.84535],[3.11683,41.84757],[3.07863,41.82662],[3.06906,41.79908],[2.93299,41.71246],[2.84018,41.69465],[2.7785,41.64558],[2.44947,41.53522],[2.26735,41.44864],[2.13054,41.30366],[2.01971,41.26586],[1.53924,41.18744],[1.21778,41.10468],[1.17294,41.05866],[1.09767,41.07087],[1.01743,41.05179],[0.7142,40.81521],[0.69483,40.786],[0.75017,40.76557],[0.76726,40.77102],[0.75017,40.786],[0.76694,40.78502],[0.84181,40.73212],[0.87371,40.72793],[0.85808,40.68626],[0.78403,40.66096],[0.67709,40.56517],[0.6159,40.55345],[0.59246,40.5821],[0.66318,40.57473],[0.73268,40.63373],[0.59978,40.61371],[0.56349,40.59003],[0.3506,40.2849],[0.20525,40.17154],[0.14454,40.07884],[0.06617,40.03193],[-0.02868,39.9018],[-0.0913,39.84793],[-0.32335,39.51622],[-0.32747,39.43068],[-0.30134,39.32201],[-0.21549,39.18184],[-0.24218,39.16627],[-0.2267,39.11178],[-0.15803,39.00214],[-0.10595,38.93651],[-0.00975,38.8697],[0.15398,38.831],[0.18531,38.80353],[0.17091,38.79609],[0.22771,38.77021],[0.23455,38.74226],[0.17677,38.72403],[0.14503,38.68635],[0.08302,38.66096],[0.08058,38.63101],[-0.04296,38.61172],[-0.07543,38.53994],[-0.17699,38.52725],[-0.32942,38.47004],[-0.39517,38.41376],[-0.41369,38.36481],[-0.46019,38.36005],[-0.47436,38.33674],[-0.50984,38.33837],[-0.51879,38.29865],[-0.50402,38.20722],[-0.59138,38.18964],[-0.62369,38.16242],[-0.64501,38.11603],[-0.65453,37.98933],[-0.71841,37.94302],[-0.75862,37.86335],[-0.76073,37.79613],[-0.78799,37.82282],[-0.81241,37.77009],[-0.85611,37.7425],[-0.80993,37.6669],[-0.75479,37.6413],[-0.72647,37.65152],[-0.708,37.64301],[-0.70531,37.61953],[-0.73664,37.59943],[-0.92516,37.55589],[-0.9735,37.5764],[-1.08776,37.58088],[-1.11999,37.55903],[-1.10577,37.53213],[-1.2427,37.5792],[-1.26167,37.55766],[-1.32374,37.56199],[-1.4709,37.48224],[-1.49694,37.4278],[-1.515,37.43321],[-1.67089,37.36331],[-1.7285,37.28242],[-1.81273,37.20706],[-1.85521,37.07661],[-1.90612,36.98762],[-1.90034,36.94119],[-1.98892,36.9005],[-2.07116,36.77534],[-2.1267,36.7364],[-2.20364,36.73713],[-2.28279,36.81009],[-2.36168,36.83678],[-2.43309,36.81627],[-2.48143,36.82994],[-2.56078,36.81879],[-2.61718,36.72842],[-2.65888,36.69481],[-2.71825,36.68203],[-2.75666,36.68037],[-2.82099,36.71389],[-2.84826,36.70022],[-2.93326,36.75165],[-2.98772,36.73711],[-3.2279,36.75483],[-3.32958,36.7449],[-3.41515,36.69552],[-3.4776,36.6961],[-3.51596,36.72105],[-3.54983,36.71237],[-3.6011,36.74255],[-3.73128,36.7241],[-3.83854,36.75197],[-3.96096,36.72679],[-4.05671,36.74799],[-4.11017,36.72573],[-4.22472,36.71239],[-4.40319,36.72386],[-4.43326,36.71068],[-4.52483,36.58071],[-4.5878,36.57382],[-4.61502,36.53056],[-4.65925,36.50764],[-4.72277,36.49299],[-4.90266,36.50654],[-4.99417,36.45709],[-5.06249,36.45222],[-5.18655,36.4112],[-5.25365,36.29711],[-5.2906,36.27741],[-5.28531,36.26081],[-5.33406,36.18781],[-5.33877,36.14112],[-5.35839,36.14111],[-5.38252,36.17231],[-5.42544,36.17976],[-5.44233,36.14879],[-5.4287,36.0808],[-5.43863,36.06281],[-5.61177,36.00646],[-5.62971,36.03677],[-5.68936,36.06712],[-5.71312,36.05996],[-5.79605,36.08552],[-5.91718,36.18407],[-5.98355,36.17699],[-6.03677,36.18952],[-6.10473,36.28071],[-6.15945,36.30431],[-6.18419,36.37071],[-6.21837,36.40245],[-6.27961,36.5113],[-6.31001,36.53413],[-6.28938,36.5373],[-6.25752,36.51378],[-6.23147,36.47268],[-6.17935,36.51354],[-6.22436,36.51085],[-6.23489,36.57575],[-6.28319,36.61237],[-6.39468,36.63691],[-6.4379,36.7333],[-6.43334,36.75121],[-6.34561,36.79499],[-6.33821,36.88373],[-6.30435,36.90721],[-6.22326,36.90233],[-6.19481,36.93212],[-6.23965,36.9134],[-6.28356,36.92593],[-6.34472,36.90127],[-6.34667,36.81989],[-6.38801,36.80817],[-6.49958,36.95966],[-6.74486,37.10139],[-6.89289,37.16657],[-6.91763,37.21507],[-6.85269,37.29523],[-6.93114,37.23387],[-6.96255,37.23383],[-6.92846,37.17235],[-7.10104,37.22425],[-7.12735,37.21475],[-7.08556,37.20649],[-7.32787,37.20157],[-7.38142,37.17992],[-7.41442,37.19282],[-7.46887,37.47557],[-7.52912,37.5567],[-7.51434,37.6014],[-7.47161,37.6369],[-7.44401,37.73015],[-7.33441,37.81193],[-7.30686,37.85077],[-7.26862,37.94924],[-7.2727,37.97701],[-7.15974,37.9968],[-7.12326,38.04001],[-7.02398,38.02256],[-6.9475,38.19664],[-7.02641,38.19963],[-7.10351,38.17359],[-7.12687,38.1909],[-7.16718,38.27208],[-7.31715,38.42458],[-7.35921,38.44636],[-7.33518,38.46944],[-7.34562,38.49414],[-7.31771,38.55625],[-7.27043,38.6177],[-7.29296,38.65627],[-7.27043,38.73751],[-7.15101,38.81929],[-7.05608,38.85515],[-7.06605,38.9046],[-6.97329,39.01395],[-6.98569,39.06676],[-7.01577,39.09681],[-7.06491,39.11477],[-7.12729,39.09748],[-7.15721,39.10544],[-7.16806,39.17063],[-7.25808,39.2113],[-7.26433,39.25233],[-7.25084,39.27063],[-7.32665,39.34132],[-7.33193,39.38473],[-7.31353,39.45744],[-7.39941,39.49366],[-7.41755,39.5242],[-7.51584,39.59376],[-7.55729,39.6798],[-7.34143,39.67184],[-7.23576,39.68652],[-7.18289,39.6751],[-7.02114,39.69401],[-6.99303,39.77421],[-7.00027,39.80253],[-6.92766,39.86191],[-6.92523,39.91793],[-6.87971,40.00919],[-6.95572,40.10293],[-7.01577,40.11905],[-7.0431,40.18137],[-7.01577,40.2255],[-6.87805,40.26524],[-6.8702,40.29553],[-6.79444,40.3564],[-6.85128,40.40952],[-6.85712,40.44213],[-6.81252,40.51463],[-6.85046,40.58223],[-6.81428,40.64718],[-6.83914,40.75751],[-6.83666,40.84025],[-6.81619,40.85683],[-6.85526,40.88722],[-6.94249,41.016],[-6.92787,41.04794],[-6.90684,41.0561],[-6.80436,41.06442],[-6.76478,41.10886],[-6.75522,41.15883],[-6.64664,41.26761],[-6.5635,41.27071],[-6.49585,41.29495],[-6.39958,41.37747],[-6.37917,41.37747],[-6.37917,41.39732],[-6.32113,41.41101],[-6.28294,41.46563],[-6.27953,41.497],[-6.20595,41.57028],[-6.27225,41.62823],[-6.36594,41.66361],[-6.46082,41.67655],[-6.50303,41.65309],[-6.54153,41.6589],[-6.5774,41.73973],[-6.52422,41.86742],[-6.5758,41.8829],[-6.57166,41.94261],[-6.60949,41.96232],[-6.62282,41.94096],[-6.72798,41.93085],[-6.7579,41.93757],[-6.79439,41.97971],[-6.82493,41.98377],[-6.83123,41.95395],[-6.85495,41.94295],[-6.94513,41.94336],[-6.99236,41.96638],[-7.05127,41.94201],[-7.14537,41.98749],[-7.19994,41.96372],[-7.19793,41.9015],[-7.21865,41.87905],[-7.32247,41.84541],[-7.39192,41.84205],[-7.44272,41.80595],[-7.46938,41.85254],[-7.51584,41.86499],[-7.54669,41.83205],[-7.60607,41.82554],[-7.62281,41.84174],[-7.60736,41.87318],[-7.66116,41.87491],[-7.72203,41.89925],[-7.89659,41.85794],[-7.9061,41.91385],[-7.92579,41.90817],[-7.94476,41.86695],[-7.99364,41.86367],[-8.04857,41.81639],[-8.17957,41.8107],[-8.17704,41.84985],[-8.2204,41.8682],[-8.23022,41.90468],[-8.18213,41.96542],[-8.10803,42.0109],[-8.09508,42.04092],[-8.13761,42.07291],[-8.20402,42.06955],[-8.20433,42.1288],[-8.22236,42.15363],[-8.34675,42.10169],[-8.62688,42.05103],[-8.67081,41.99981],[-8.7508,41.96898],[-8.77709,41.93716],[-8.86465,41.8889],[-8.88126,41.8933],[-8.8955,42.11909],[-8.82653,42.13052],[-8.82372,42.14761],[-8.84699,42.16083],[-8.77196,42.22223],[-8.62515,42.30195],[-8.62271,42.34748],[-8.67479,42.29902],[-8.78498,42.26008],[-8.8675,42.25641],[-8.85326,42.30484],[-8.82722,42.2967],[-8.83072,42.34162],[-8.77196,42.34272],[-8.65526,42.44135],[-8.69449,42.43964],[-8.75764,42.40721],[-8.84358,42.40371],[-8.8675,42.4147],[-8.88801,42.45563],[-8.94262,42.46931],[-8.88126,42.49657],[-8.86083,42.48501],[-8.87434,42.46931],[-8.82653,42.46186],[-8.81286,42.50275],[-8.82299,42.56952],[-8.7755,42.60472],[-8.73095,42.68842],[-8.78498,42.64057],[-8.83951,42.68244],[-8.857,42.64912],[-8.84699,42.64057],[-8.86876,42.6175],[-8.90343,42.62547],[-8.93639,42.60643],[-8.92223,42.59369],[-8.96988,42.57917],[-8.98078,42.55121],[-9.01154,42.53071],[-9.02636,42.54312],[-9.03336,42.57811],[-9.07087,42.59614],[-9.03014,42.70771],[-8.89826,42.7923],[-8.88768,42.83112],[-8.90844,42.83946],[-8.91259,42.8166],[-8.95104,42.79511],[-9.04894,42.79474],[-9.04564,42.77802],[-9.06867,42.75971],[-9.10025,42.75751],[-9.135,42.81277],[-9.10025,42.83328],[-9.14123,42.85745],[-9.14867,42.88447],[-9.13451,42.91755],[-9.19587,42.94933],[-9.19579,42.92658],[-9.22423,42.94021],[-9.27306,42.89334],[-9.29198,42.92878],[-9.25097,43.01679],[-9.27953,43.055],[-9.25792,43.0609],[-9.2176,43.11445],[-9.18981,43.10232],[-9.10774,43.14114],[-9.20836,43.13788],[-9.2176,43.15534],[-9.13793,43.20152],[-9.0524,43.19636],[-9.01154,43.23876],[-8.98575,43.22687],[-8.93253,43.2353],[-8.91527,43.24502],[-8.94815,43.24994],[-8.98803,43.28303],[-8.82999,43.34121],[-8.78555,43.31244],[-8.6931,43.2934],[-8.59252,43.3242],[-8.55842,43.31322],[-8.44302,43.37531],[-8.38829,43.38589],[-8.35359,43.34862],[-8.33072,43.40567],[-8.2672,43.38593],[-8.21019,43.31322],[-8.20963,43.39069],[-8.1754,43.41633],[-8.26476,43.42731],[-8.30517,43.45108],[-8.17878,43.47329],[-8.16857,43.49201],[-8.25731,43.47773],[-8.24372,43.48517],[-8.25731,43.49201],[-8.28897,43.47297],[-8.33312,43.4715],[-8.31664,43.52289],[-8.2921,43.53294],[-8.31265,43.56712],[-8.23225,43.57551],[-8.08666,43.65648],[-8.07461,43.63963],[-8.05187,43.64281],[-8.06554,43.64281],[-8.05187,43.65648],[-8.07396,43.67853],[-8.05932,43.70942],[-7.98119,43.71784],[-7.90856,43.76634],[-7.88085,43.76325],[-7.84651,43.71796],[-7.86758,43.71796],[-7.87377,43.68447],[-7.90856,43.67015],[-7.85839,43.6682],[-7.84923,43.6756],[-7.86758,43.69745],[-7.81916,43.69745],[-7.82604,43.71174],[-7.812,43.72309],[-7.71276,43.76069],[-7.68554,43.79344],[-7.66832,43.77253],[-7.69563,43.74592],[-7.69156,43.72724],[-7.64102,43.75267],[-7.61596,43.68854],[-7.58641,43.71796],[-7.54141,43.73163],[-7.36705,43.68008],[-7.30411,43.59858],[-7.25674,43.58161],[-7.27107,43.56114],[-7.0443,43.55939],[-7.03087,43.53323],[-7.05362,43.49653],[-7.04459,43.47919],[-7.00137,43.55667],[-6.94396,43.56598],[-6.70373,43.55756],[-6.64867,43.57905],[-6.51012,43.54747],[-6.46296,43.55496],[-6.46911,43.57538],[-6.41763,43.56114],[-6.31461,43.56863],[-6.22277,43.59589],[-6.17805,43.57538],[-6.06916,43.56969],[-6.02351,43.58845],[-5.90738,43.58845],[-5.90738,43.63683],[-5.86351,43.64142],[-5.8522,43.66295],[-5.80382,43.6505],[-5.70885,43.56863],[-5.69677,43.58283],[-5.67748,43.56114],[-5.39387,43.55524],[-5.41393,43.50654],[-5.3568,43.5386],[-5.29988,43.53766],[-5.17789,43.48937],[-4.97517,43.45877],[-4.94103,43.47175],[-4.73493,43.4171],[-4.50817,43.40245],[-4.48168,43.38361],[-4.43253,43.40261],[-4.37926,43.38361],[-4.35936,43.39968],[-4.18859,43.40538],[-4.01277,43.4525],[-3.98143,43.43826],[-3.96101,43.4451],[-3.9746,43.45877],[-3.94005,43.47712],[-3.82673,43.49702],[-3.76915,43.47919],[-3.84431,43.4451],[-3.83129,43.42459],[-3.81119,43.42548],[-3.77229,43.4525],[-3.74498,43.43826],[-3.75552,43.47175],[-3.72887,43.46552],[-3.72887,43.47919],[-3.57942,43.51826],[-3.55435,43.51691],[-3.55626,43.4997],[-3.50536,43.47919],[-3.43151,43.46686],[-3.42862,43.44685],[-3.47004,43.45417],[-3.5017,43.43077],[-3.46109,43.41246],[-3.44701,43.43077],[-3.43619,43.41901],[-3.26895,43.40412],[-3.1315,43.35578],[-3.08951,43.36689],[-3.00817,43.32091],[-3.02929,43.37617],[-2.93993,43.4171],[-2.94668,43.43077],[-2.76863,43.4525],[-2.7152,43.42451],[-2.69103,43.36754],[-2.67781,43.40619],[-2.6612,43.41193],[-2.48351,43.37063],[-2.46443,43.34923],[-2.36742,43.3157],[-2.28466,43.30349],[-2.19628,43.31477],[-2.1278,43.28742],[-1.96036,43.34309],[-1.91869,43.32099],[-1.90465,43.32844],[-1.92569,43.34264],[-1.81127,43.39509],[-1.79408,43.38602]],"morocco":[[-8.81704,27.66146],[-8.77339,27.46003],[-8.80171,27.36042],[-8.79584,27.30769],[-8.75287,27.19049],[-8.75287,27.15046],[-8.7939,27.12018],[-9.00092,27.08992],[-9.20747,27.09969],[-9.41206,27.08796],[-9.48631,27.04988],[-9.73436,26.86043],[-9.81686,26.84968],[-9.89936,26.84968],[-10.03171,26.91022],[-10.18844,26.86043],[-10.25046,26.86043],[-10.55028,26.99029],[-10.75678,27.01959],[-10.92183,27.00982],[-11.39157,26.88291],[-11.36031,26.79304],[-11.31587,26.74421],[-11.31587,26.68364],[-11.3369,26.6329],[-11.51069,26.46981],[-11.68355,26.21298],[-11.71724,26.10358],[-12.02975,26.03035],[-12.06001,25.9903],[-12.08006,25.8702],[-12.16987,25.63973],[-12.31002,25.11043],[-12.43014,24.83017],[-12.62984,24.67976],[-12.99018,24.4698],[-13.06002,24.40048],[-13.22996,24.0899],[-13.31001,23.98055],[-13.76998,23.79012],[-13.8398,23.75008],[-13.89013,23.69049],[-14.01999,23.41025],[-14.10007,23.09968],[-14.16991,22.75985],[-14.1899,22.45026],[-14.22019,22.30965],[-14.31005,22.19051],[-14.43991,22.08015],[-14.45991,22.0401],[-14.62985,21.86042],[-14.60983,21.75007],[-14.66987,21.59967],[-14.74997,21.50008],[-14.83981,21.45027],[-14.97017,21.4405],[-15.45993,21.45027],[-15.74996,21.49032],[-16.04002,21.50008],[-16.18989,21.48055],[-16.72996,21.4698],[-17.01374,21.41997],[-16.97106,21.5926],[-16.96801,21.69725],[-16.94766,21.73603],[-16.94701,21.76],[-16.96691,21.78115],[-16.92101,21.9313],[-16.81664,22.13056],[-16.70678,22.27546],[-16.65901,22.29507],[-16.6317,22.27391],[-16.52184,22.31489],[-16.46662,22.37739],[-16.42935,22.51044],[-16.35729,22.58308],[-16.33682,22.75373],[-16.29646,22.8321],[-16.28962,22.89981],[-16.23864,22.91157],[-16.16324,22.99323],[-16.15954,23.08246],[-16.2202,23.07587],[-16.21312,23.09443],[-16.13927,23.17853],[-16.06041,23.34455],[-15.98119,23.44579],[-15.95645,23.53172],[-15.90551,23.6103],[-15.83039,23.68598],[-15.77261,23.78783],[-15.77514,23.91193],[-15.79532,23.85664],[-15.86172,23.83617],[-15.88817,23.81074],[-15.93961,23.69623],[-15.99486,23.64501],[-16.00975,23.65542],[-16.00316,23.6721],[-15.93961,23.77481],[-15.84093,23.90265],[-15.76814,23.95987],[-15.62011,24.02627],[-15.44469,24.22187],[-15.29825,24.34516],[-15.20397,24.46748],[-15.15355,24.5056],[-15.06941,24.52729],[-15.0148,24.56245],[-14.99999,24.61449],[-14.89562,24.70572],[-14.83605,24.91869],[-14.8435,24.98762],[-14.82921,25.05024],[-14.84972,25.21418],[-14.81924,25.33023],[-14.78205,25.44693],[-14.71491,25.52558],[-14.68517,25.59089],[-14.62096,25.7836],[-14.5139,25.93696],[-14.48656,26.01545],[-14.48038,26.08779],[-14.49283,26.13272],[-14.46613,26.19424],[-14.40075,26.2663],[-14.29894,26.30223],[-14.18025,26.42438],[-14.04686,26.4444],[-13.92374,26.50088],[-13.61998,26.68891],[-13.56111,26.74909],[-13.48034,26.91169],[-13.40245,27.17719],[-13.3011,27.32445],[-13.30793,27.34496],[-13.24083,27.4654],[-13.17125,27.685],[-13.04515,27.75983],[-12.95238,27.92862],[-12.83894,27.9704],[-12.65783,27.99803],[-12.51354,27.99543],[-12.33503,28.04727],[-12.06143,28.08902],[-12.0231,28.11957],[-11.48559,28.32563],[-11.34097,28.47968],[-11.32592,28.5152],[-11.26647,28.55158],[-11.0631,28.75239],[-10.5738,28.99042],[-10.45092,29.09219],[-10.32087,29.25796],[-10.2484,29.29938],[-10.08699,29.50996],[-10.05297,29.59992],[-9.82022,29.83893],[-9.71793,29.99657],[-9.65514,30.1269],[-9.61164,30.40436],[-9.66625,30.4593],[-9.70006,30.54271],[-9.82966,30.62861],[-9.88854,30.64826],[-9.88671,30.68667],[-9.8129,30.82713],[-9.82771,31.06745],[-9.84752,31.12128],[-9.80663,31.34345],[-9.84752,31.40241],[-9.6942,31.62572],[-9.66731,31.73115],[-9.36612,32.02631],[-9.32811,32.13044],[-9.27774,32.1966],[-9.26476,32.33063],[-9.29198,32.35082],[-9.24885,32.45254],[-9.27831,32.52953],[-9.25992,32.57689],[-9.11217,32.68285],[-8.99853,32.79711],[-8.86779,32.8819],[-8.62914,33.12763],[-8.621,33.17353],[-8.52916,33.2687],[-8.45165,33.26423],[-8.37877,33.30467],[-8.28466,33.38984],[-7.89143,33.50336],[-7.86974,33.52656],[-7.701,33.58275],[-7.66755,33.6127],[-7.60619,33.60834],[-7.52912,33.63264],[-7.40636,33.727],[-7.35261,33.72468],[-7.22932,33.80093],[-7.03181,33.87425],[-6.82209,34.03962],[-6.66779,34.2805],[-6.55793,34.41771],[-6.2921,34.88081],[-6.20539,35.12458],[-6.02391,35.50117],[-5.92723,35.78075],[-5.8734,35.80199],[-5.76928,35.79279],[-5.69351,35.8343],[-5.59899,35.82233],[-5.46886,35.91035],[-5.4142,35.9094],[-5.39886,35.9245],[-5.34073,35.84736],[-5.31876,35.70173],[-5.3048,35.68521],[-5.27676,35.68521],[-5.24942,35.58462],[-5.15079,35.5161],[-5.06627,35.41747],[-4.98851,35.38788],[-4.90933,35.31452],[-4.7705,35.24103],[-4.37605,35.15184],[-3.91934,35.26683],[-3.90941,35.25528],[-3.92953,35.24382],[-3.9039,35.21417],[-3.78747,35.20922],[-3.7648,35.21845],[-3.74714,35.26366],[-3.69957,35.29084],[-3.59097,35.2333],[-3.41291,35.19794],[-3.31924,35.20181],[-3.19514,35.23823],[-3.11803,35.29413],[-3.07706,35.28791],[-3.0454,35.31444],[-2.96858,35.44644],[-2.95222,35.43305],[-2.96304,35.37348],[-2.94782,35.32978],[-2.96692,35.31387],[-2.96377,35.28622],[-2.94305,35.26787],[-2.91291,35.27692],[-2.89904,35.26],[-2.90982,35.18671],[-2.85607,35.13129],[-2.74812,35.11595],[-2.86828,35.21735],[-2.87841,35.24632],[-2.7611,35.14326],[-2.66674,35.10822],[-2.51749,35.09935],[-2.41674,35.14916],[-2.27526,35.10957],[-2.22256,35.0893],[-2.22113,35.04995],[-2.19379,35.0036],[-2.06124,34.9297],[-2.01628,34.92624],[-1.97975,34.86526],[-1.76953,34.74134],[-1.87112,34.59665],[-1.75066,34.49417],[-1.70297,34.47968],[-1.80963,34.37245],[-1.74606,34.29031],[-1.66963,34.07921],[-1.71873,33.89809],[-1.70322,33.76182],[-1.74679,33.70239],[-1.6624,33.64469],[-1.61734,33.55444],[-1.61274,33.52147],[-1.68323,33.36923],[-1.67423,33.23797],[-1.62359,33.1966],[-1.5714,33.11198],[-1.49952,33.06021],[-1.50298,32.97463],[-1.55879,32.93365],[-1.42335,32.7424],[-1.32702,32.69891],[-1.032,32.4944],[-1.12316,32.41795],[-1.21798,32.39262],[-1.24413,32.35692],[-1.27664,32.20085],[-1.30955,32.16744],[-1.30516,32.15116],[-1.23271,32.16372],[-1.19561,32.14605],[-1.19059,32.12522],[-1.21033,32.08967],[-2.51615,32.1322],[-2.69557,32.08967],[-2.88119,32.07629],[-2.93873,32.04864],[-2.82784,31.79459],[-3.00256,31.77362],[-3.21921,31.71771],[-3.51156,31.67274],[-3.59138,31.67827],[-3.65951,31.64782],[-3.67348,31.38923],[-3.74747,31.38517],[-3.81519,31.33716],[-3.81498,31.22052],[-3.84284,31.17019],[-3.83932,31.15283],[-3.8108,31.14291],[-3.74886,31.18022],[-3.73142,31.17634],[-3.68972,31.1256],[-3.62414,31.08653],[-3.60874,31.03087],[-3.55467,30.95593],[-3.65951,30.83712],[-3.64553,30.71132],[-3.83423,30.62745],[-4.00196,30.59251],[-4.15571,30.58552],[-4.27452,30.55756],[-4.37237,30.50864],[-4.48419,30.38284],[-4.62397,30.285],[-4.87556,30.18017],[-5.17608,29.97749],[-5.27393,29.88663],[-5.43467,29.64203],[-5.5395,29.52322],[-5.63735,29.49526],[-5.72121,29.52322],[-5.75616,29.61407],[-6.00077,29.57913],[-6.27333,29.57913],[-6.69965,29.51623],[-6.78352,29.44634],[-6.95824,29.50924],[-7.14693,29.50924],[-7.25875,29.4673],[-7.34961,29.38344],[-7.61945,29.38942],[-7.65361,29.37619],[-8.03633,29.09985],[-8.18231,29.03554],[-8.36845,28.91653],[-8.43041,28.84101],[-8.66761,28.71168],[-8.68239,28.6659],[-8.68239,27.66144],[-8.81704,27.66146]]};
+
+      const els = {
+        totalDays: document.getElementById('totalDays'),
+        dayTotalLabel: document.getElementById('dayTotalLabel'),
+        copyItinerary: document.getElementById('copyItineraryButton'),
+        stopCount: document.getElementById('stopCount'),
+        tripStartDate: document.getElementById('tripStartDate'),
+        tripEndDate: document.getElementById('tripEndDate'),
+        dateStatus: document.getElementById('dateStatus'),
+        routeList: document.getElementById('routeList'),
+        mapPanel: document.querySelector('.map-panel'),
+        tripMap: document.getElementById('tripMap'),
+        mapViewport: document.getElementById('mapViewport'),
+        zoomOut: document.getElementById('zoomOut'),
+        zoomIn: document.getElementById('zoomIn'),
+        resetMap: document.getElementById('resetMap'),
+        zoomLevel: document.getElementById('zoomLevel'),
+        countryLayer: document.getElementById('countryLayer'),
+        routeLayer: document.getElementById('routeLayer'),
+        catalogLayer: document.getElementById('catalogLayer'),
+        pinLayer: document.getElementById('pinLayer'),
+        dialog: document.getElementById('stopDialog'),
+        dialogTitle: document.getElementById('dialogTitle'),
+        form: document.getElementById('stopForm'),
+        citySelect: document.getElementById('citySelect'),
+        customFields: document.getElementById('customFields'),
+        customName: document.getElementById('customName'),
+        customCountry: document.getElementById('customCountry'),
+        customLat: document.getElementById('customLat'),
+        customLon: document.getElementById('customLon'),
+        days: document.getElementById('daysInput'),
+        notes: document.getElementById('notesInput'),
+        error: document.getElementById('formError'),
+        toast: document.getElementById('toast')
+      };
+
+      let stops = loadStops();
+      let tripMeta = loadTripMeta();
+      let editingId = null;
+      let draggedId = null;
+      let toastTimer = null;
+      let mapView = { scale: 1, x: 0, y: 0 };
+      let panState = null;
+
+      function svg(tag, attrs = {}) {
+        const node = document.createElementNS(SVG_NS, tag);
+        Object.entries(attrs).forEach(([key, value]) => node.setAttribute(key, String(value)));
+        return node;
+      }
+
+      function project(lon, lat) {
+        return {
+          x: ((lon - MAP.minLon) / (MAP.maxLon - MAP.minLon)) * MAP.width,
+          y: ((MAP.maxLat - lat) / (MAP.maxLat - MAP.minLat)) * MAP.height
+        };
+      }
+
+      function clamp(value, min, max) {
+        return Math.min(max, Math.max(min, value));
+      }
+
+      function clampMapView(view) {
+        const minX = MAP.width * (1 - view.scale);
+        const minY = MAP.height * (1 - view.scale);
+        return {
+          scale: clamp(view.scale, 1, 4),
+          x: clamp(view.x, minX, 0),
+          y: clamp(view.y, minY, 0)
+        };
+      }
+
+      function eventToMapPoint(event) {
+        const point = els.tripMap.createSVGPoint();
+        point.x = event.clientX;
+        point.y = event.clientY;
+        const matrix = els.tripMap.getScreenCTM();
+        return matrix ? point.matrixTransform(matrix.inverse()) : { x: MAP.width / 2, y: MAP.height / 2 };
+      }
+
+      function applyMapView() {
+        mapView = clampMapView(mapView);
+        els.mapViewport.setAttribute('transform', `translate(${mapView.x.toFixed(2)} ${mapView.y.toFixed(2)}) scale(${mapView.scale.toFixed(3)})`);
+        const inverseScale = 1 / mapView.scale;
+        els.pinLayer.querySelectorAll('.route-pin').forEach(node => {
+          const x = node.getAttribute('data-map-x');
+          const y = node.getAttribute('data-map-y');
+          node.setAttribute('transform', `translate(${x} ${y}) scale(${inverseScale.toFixed(4)})`);
+        });
+        els.catalogLayer.querySelectorAll('.catalog-fo').forEach(node => {
+          const x = node.getAttribute('data-map-x');
+          const y = node.getAttribute('data-map-y');
+          node.setAttribute('transform', `translate(${x} ${y}) scale(${inverseScale.toFixed(4)})`);
+        });
+        els.zoomLevel.textContent = `${Math.round(mapView.scale * 100)}%`;
+        els.zoomOut.disabled = mapView.scale <= 1.001;
+        els.resetMap.disabled = mapView.scale <= 1.001 && Math.abs(mapView.x) < .01 && Math.abs(mapView.y) < .01;
+      }
+
+      function zoomMap(nextScale, focal = { x: MAP.width / 2, y: MAP.height / 2 }) {
+        const oldScale = mapView.scale;
+        const newScale = clamp(nextScale, 1, 4);
+        if (Math.abs(newScale - oldScale) < .001) return;
+        const ratio = newScale / oldScale;
+        mapView = {
+          scale: newScale,
+          x: focal.x - ((focal.x - mapView.x) * ratio),
+          y: focal.y - ((focal.y - mapView.y) * ratio)
+        };
+        applyMapView();
+      }
+
+      function resetMapView() {
+        mapView = { scale: 1, x: 0, y: 0 };
+        applyMapView();
+      }
+
+      function polygonPath(coords) {
+        return coords.map(([lon, lat], index) => {
+          const p = project(lon, lat);
+          return `${index ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`;
+        }).join(' ') + ' Z';
+      }
+
+      function drawCountries() {
+        els.countryLayer.replaceChildren();
+        const polygonSource = { ...countryPolygons, ...detailedCountryPolygons };
+        Object.entries(polygonSource).forEach(([name, coords]) => {
+          const pathData = polygonPath(coords);
+          els.countryLayer.appendChild(svg('path', { d: pathData, class: `country-shape ${name}` }));
+          els.countryLayer.appendChild(svg('path', { d: pathData, class: `terrain-overlay ${name}` }));
+        });
+      }
+
+      function populateCitySelect() {
+        els.citySelect.replaceChildren();
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = 'Choose a city…';
+        placeholder.disabled = true;
+        placeholder.selected = true;
+        els.citySelect.appendChild(placeholder);
+
+        ['Spain', 'Morocco'].forEach(country => {
+          const group = document.createElement('optgroup');
+          group.label = country;
+          cities.filter(city => city.country === country).forEach(city => {
+            const option = document.createElement('option');
+            option.value = city.id;
+            option.textContent = city.name;
+            group.appendChild(option);
+          });
+          els.citySelect.appendChild(group);
+        });
+
+        const custom = document.createElement('option');
+        custom.value = 'custom';
+        custom.textContent = 'Custom place…';
+        els.citySelect.appendChild(custom);
+      }
+
+      function loadStops() {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY));
+          if (!Array.isArray(parsed)) return [];
+          return parsed.filter(stop => stop && typeof stop.name === 'string' && Number.isFinite(Number(stop.lat)) && Number.isFinite(Number(stop.lon))).map(stop => ({
+            id: String(stop.id || cryptoId()),
+            cityId: stop.cityId ? String(stop.cityId) : null,
+            name: stop.cityId === 'el-palmar' ? 'El Palmar de Vejer' : String(stop.name).slice(0, 50),
+            country: stop.country === 'Spain' ? 'Spain' : 'Morocco',
+            lat: Number(stop.lat),
+            lon: Number(stop.lon),
+            days: Math.max(0, Math.min(30, Number(stop.days) || 0)),
+            notes: String(stop.notes || '').slice(0, 500)
+          }));
+        } catch (_) {
+          return [];
+        }
+      }
+
+      function loadTripMeta() {
+        const fallback = { startDate: '2026-08-23', endDate: '2026-09-06' };
+        try {
+          const parsed = JSON.parse(localStorage.getItem(TRIP_META_KEY));
+          if (!parsed || !isDateInput(parsed.startDate) || !isDateInput(parsed.endDate)) return fallback;
+          return { startDate: parsed.startDate, endDate: parsed.endDate };
+        } catch (_) {
+          return fallback;
+        }
+      }
+
+      function saveStops() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(stops));
+          localStorage.setItem(TRIP_META_KEY, JSON.stringify(tripMeta));
+        } catch (_) {
+          showToast('Could not save in this browser');
+        }
+      }
+
+      function isDateInput(value) {
+        return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(`${value}T00:00:00Z`));
+      }
+
+      function parseDate(value) {
+        return new Date(`${value}T00:00:00Z`);
+      }
+
+      function addDays(date, days) {
+        return new Date(date.getTime() + (days * 86400000));
+      }
+
+      function tripWindowDays() {
+        const start = parseDate(tripMeta.startDate);
+        const end = parseDate(tripMeta.endDate);
+        return Math.round((end.getTime() - start.getTime()) / 86400000 * 10) / 10;
+      }
+
+      function formatMoment(date) {
+        const base = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(date);
+        const hour = date.getUTCHours();
+        return hour === 12 ? `${base}, noon` : base;
+      }
+
+      function formatRange(start, end, compact = false) {
+        if (compact) {
+          const formatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+          return `${formatter.format(start)}–${formatter.format(end)}`;
+        }
+        return `${formatMoment(start)} → ${formatMoment(end)}`;
+      }
+
+      function formatCopyMoment(date) {
+        const base = new Intl.DateTimeFormat('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+          timeZone: 'UTC'
+        }).format(date);
+        return date.getUTCHours() === 12 ? `${base}, noon` : base;
+      }
+
+      function buildSchedule() {
+        const tripStart = parseDate(tripMeta.startDate);
+        let offset = 0;
+        return stops.map(stop => {
+          const start = addDays(tripStart, offset);
+          offset += Number(stop.days) || 0;
+          const end = addDays(tripStart, offset);
+          return { ...stop, scheduleStart: start, scheduleEnd: end };
+        });
+      }
+
+      function cryptoId() {
+        if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
+        return `stop-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      }
+
+      function formatDays(value) {
+        const n = Number(value) || 0;
+        return Number.isInteger(n) ? String(n) : n.toFixed(1).replace(/\.0$/, '');
+      }
+
+      function showToast(message) {
+        els.toast.textContent = message;
+        els.toast.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => els.toast.classList.remove('show'), 1800);
+      }
+
+      function itineraryText() {
+        return buildSchedule().map((stop, index) => (
+          `${index + 1}. ${stop.name} — ${formatDays(stop.days)} ${Number(stop.days) === 1 ? 'day' : 'days'} — Arrive ${formatCopyMoment(stop.scheduleStart)} · Leave ${formatCopyMoment(stop.scheduleEnd)}`
+        )).join('\n');
+      }
+
+      function fallbackCopy(text) {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.select();
+        const copied = document.execCommand('copy');
+        textarea.remove();
+        if (!copied) throw new Error('Copy command failed');
+      }
+
+      async function copyItinerary() {
+        const text = itineraryText();
+        if (!text) {
+          showToast('Add a stop before copying');
+          return;
+        }
+        try {
+          if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(text);
+          } else {
+            fallbackCopy(text);
+          }
+          showToast('Itinerary copied');
+        } catch (_) {
+          showToast('Could not copy in this browser');
+        }
+      }
+
+      function render() {
+        const schedule = buildSchedule();
+        renderList(schedule);
+        renderMap(schedule);
+        const total = stops.reduce((sum, stop) => sum + (Number(stop.days) || 0), 0);
+        const available = tripWindowDays();
+        els.totalDays.textContent = formatDays(total);
+        els.dayTotalLabel.textContent = Number.isFinite(available) && available >= 0 ? `of ${formatDays(available)} days` : 'planned days';
+        els.stopCount.textContent = `${stops.length} ${stops.length === 1 ? 'stop' : 'stops'}`;
+        els.tripStartDate.value = tripMeta.startDate;
+        els.tripEndDate.value = tripMeta.endDate;
+        els.tripEndDate.min = tripMeta.startDate;
+        renderDateStatus(total, available);
+        saveStops();
+      }
+
+      function renderDateStatus(total, available) {
+        els.dateStatus.classList.remove('over');
+        if (!Number.isFinite(available) || available < 0) {
+          els.dateStatus.textContent = 'Flight date must be after arrival';
+          els.dateStatus.classList.add('over');
+          return;
+        }
+        const difference = Math.round((available - total) * 10) / 10;
+        if (difference === 0) {
+          els.dateStatus.textContent = `Route fits your ${formatDays(available)}-day trip window`;
+        } else if (difference > 0) {
+          els.dateStatus.textContent = `${formatDays(difference)} ${difference === 1 ? 'day' : 'days'} still unplanned`;
+        } else {
+          els.dateStatus.textContent = `${formatDays(Math.abs(difference))} ${Math.abs(difference) === 1 ? 'day' : 'days'} past your flight date`;
+          els.dateStatus.classList.add('over');
+        }
+      }
+
+      function renderList(schedule) {
+        els.routeList.replaceChildren();
+        if (!stops.length) {
+          const empty = document.createElement('div');
+          empty.className = 'empty-state';
+          empty.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg>
+            <h3>Start with a city</h3>
+            <p>Add a stop here or tap any labeled dot on the map.</p>
+            <button class="secondary-btn" type="button">Add your first stop</button>`;
+          empty.querySelector('button').addEventListener('click', () => openDialog());
+          els.routeList.appendChild(empty);
+          return;
+        }
+
+        schedule.forEach((stop, index) => {
+          const card = document.createElement('article');
+          card.className = 'stop-card';
+          card.draggable = true;
+          card.dataset.id = stop.id;
+
+          const handle = document.createElement('button');
+          handle.type = 'button';
+          handle.className = 'drag-handle';
+          handle.setAttribute('aria-label', `Drag ${stop.name} to reorder`);
+          handle.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="7" r="1.4"/><circle cx="15" cy="7" r="1.4"/><circle cx="9" cy="12" r="1.4"/><circle cx="15" cy="12" r="1.4"/><circle cx="9" cy="17" r="1.4"/><circle cx="15" cy="17" r="1.4"/></svg>';
+
+          const copy = document.createElement('div');
+          copy.className = 'stop-copy';
+          const titleRow = document.createElement('div');
+          titleRow.className = 'stop-title-row';
+          const number = document.createElement('span');
+          number.className = 'stop-number';
+          number.textContent = String(index + 1);
+          const name = document.createElement('span');
+          name.className = 'stop-name';
+          name.textContent = stop.name;
+          titleRow.append(number, name);
+          const meta = document.createElement('div');
+          meta.className = 'stop-meta';
+          meta.textContent = `${stop.country} · ${formatDays(stop.days)} ${Number(stop.days) === 1 ? 'day' : 'days'}`;
+          const dates = document.createElement('div');
+          dates.className = 'stop-dates';
+          dates.textContent = formatRange(stop.scheduleStart, stop.scheduleEnd);
+          copy.append(titleRow, meta, dates);
+          if (stop.notes) {
+            const note = document.createElement('div');
+            note.className = 'stop-note';
+            note.textContent = stop.notes;
+            copy.appendChild(note);
+          }
+
+          const actions = document.createElement('div');
+          actions.className = 'stop-actions';
+          const up = actionButton('Move up', arrowIcon('up'), () => moveStop(index, index - 1));
+          const down = actionButton('Move down', arrowIcon('down'), () => moveStop(index, index + 1));
+          up.disabled = index === 0;
+          down.disabled = index === stops.length - 1;
+          up.style.opacity = up.disabled ? '.3' : '1';
+          down.style.opacity = down.disabled ? '.3' : '1';
+          const edit = actionButton(`Edit ${stop.name}`, editIcon(), () => openDialog(stop));
+          actions.append(up, down, edit);
+          card.append(handle, copy, actions);
+          bindDrag(card);
+          els.routeList.appendChild(card);
+        });
+      }
+
+      function actionButton(label, icon, handler) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'icon-btn';
+        button.setAttribute('aria-label', label);
+        button.innerHTML = icon;
+        button.addEventListener('click', handler);
+        return button;
+      }
+
+      function arrowIcon(direction) {
+        return direction === 'up'
+          ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 15-6-6-6 6"/></svg>'
+          : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+      }
+
+      function editIcon() {
+        return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg>';
+      }
+
+      function moveStop(from, to) {
+        if (to < 0 || to >= stops.length || from === to) return;
+        const [moved] = stops.splice(from, 1);
+        stops.splice(to, 0, moved);
+        render();
+      }
+
+      function bindDrag(card) {
+        card.addEventListener('dragstart', event => {
+          draggedId = card.dataset.id;
+          card.classList.add('dragging');
+          event.dataTransfer.effectAllowed = 'move';
+          event.dataTransfer.setData('text/plain', draggedId);
+        });
+        card.addEventListener('dragend', () => {
+          draggedId = null;
+          document.querySelectorAll('.stop-card').forEach(node => node.classList.remove('dragging', 'drag-over'));
+        });
+        card.addEventListener('dragover', event => {
+          event.preventDefault();
+          if (draggedId && draggedId !== card.dataset.id) card.classList.add('drag-over');
+        });
+        card.addEventListener('dragleave', () => card.classList.remove('drag-over'));
+        card.addEventListener('drop', event => {
+          event.preventDefault();
+          card.classList.remove('drag-over');
+          const sourceId = event.dataTransfer.getData('text/plain') || draggedId;
+          const from = stops.findIndex(stop => stop.id === sourceId);
+          const to = stops.findIndex(stop => stop.id === card.dataset.id);
+          if (from >= 0 && to >= 0 && from !== to) moveStop(from, to);
+        });
+      }
+
+      function renderMap(schedule) {
+        els.routeLayer.replaceChildren();
+        els.catalogLayer.replaceChildren();
+        els.pinLayer.replaceChildren();
+
+        if (schedule.length > 1) {
+          const points = schedule.map(stop => project(stop.lon, stop.lat));
+          const pathData = points.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+          els.routeLayer.appendChild(svg('path', { d: pathData, class: 'route-shadow' }));
+          els.routeLayer.appendChild(svg('path', { d: pathData, class: 'route-line' }));
+
+          for (let i = 0; i < schedule.length - 1; i += 1) {
+            const a = schedule[i];
+            const b = schedule[i + 1];
+            if ((a.cityId === 'tarifa' && b.cityId === 'tangier') || (a.cityId === 'tangier' && b.cityId === 'tarifa')) {
+              const pa = project(a.lon, a.lat);
+              const pb = project(b.lon, b.lat);
+              els.routeLayer.appendChild(svg('path', { d: `M${pa.x},${pa.y} L${pb.x},${pb.y}`, class: 'route-ferry' }));
+            }
+          }
+        }
+
+        const cityIdsInRoute = new Set(schedule.map(stop => stop.cityId).filter(Boolean));
+        cities.forEach(city => {
+          const p = project(city.lon, city.lat);
+          if (cityIdsInRoute.has(city.id)) return;
+
+          const caption = svg('foreignObject', {
+            class: 'catalog-fo catalog-caption',
+            x: -90,
+            y: -30,
+            width: 180,
+            height: 70,
+            'data-map-x': p.x.toFixed(1),
+            'data-map-y': p.y.toFixed(1)
+          });
+          const captionBox = document.createElement('div');
+          captionBox.className = 'catalog-caption-box';
+          const label = document.createElement('span');
+          label.className = 'label';
+          label.textContent = city.name;
+          captionBox.appendChild(label);
+          if (city.activity) {
+            const activity = document.createElement('span');
+            activity.className = 'activity-label';
+            activity.textContent = `≈ ${city.activity}`;
+            captionBox.appendChild(activity);
+          }
+          caption.appendChild(captionBox);
+
+          const foreign = svg('foreignObject', {
+            class: 'catalog-fo catalog-hit',
+            x: -19,
+            y: -19,
+            width: 38,
+            height: 38,
+            'data-map-x': p.x.toFixed(1),
+            'data-map-y': p.y.toFixed(1)
+          });
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'catalog-html-btn';
+          button.setAttribute('aria-label', `Add ${city.name}, ${city.country}`);
+          const dot = document.createElement('span');
+          dot.className = 'dot';
+          dot.setAttribute('aria-hidden', 'true');
+          button.appendChild(dot);
+          button.addEventListener('click', () => openDialog(null, city.id));
+          foreign.appendChild(button);
+          els.catalogLayer.append(caption, foreign);
+        });
+
+        schedule.forEach((stop, index) => {
+          const p = project(stop.lon, stop.lat);
+          const group = svg('g', {
+            class: 'route-pin',
+            tabindex: '0',
+            role: 'button',
+            'aria-label': `Stop ${index + 1}, ${stop.name}, ${formatDays(stop.days)} days. Edit stop.`,
+            'data-map-x': p.x.toFixed(1),
+            'data-map-y': p.y.toFixed(1)
+          });
+          group.appendChild(svg('circle', { class: 'pin-halo', r: 24 }));
+          group.appendChild(svg('circle', { class: 'pin-body', cy: -3, r: 16 }));
+          const number = svg('text', { class: 'pin-number', y: -2 });
+          number.textContent = String(index + 1);
+          const label = svg('text', { class: 'pin-label', y: -29 });
+          label.textContent = stop.name;
+          const days = svg('text', { class: 'pin-days', y: 29 });
+          days.textContent = `${formatDays(stop.days)} ${Number(stop.days) === 1 ? 'day' : 'days'}${stop.cityId === 'el-palmar' ? ' · surf' : ''}`;
+          group.append(number, label, days);
+          group.addEventListener('click', () => openDialog(stop));
+          group.addEventListener('keydown', event => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              openDialog(stop);
+            }
+          });
+          els.pinLayer.appendChild(group);
+        });
+        applyMapView();
+      }
+
+      function openDialog(stop = null, cityId = '') {
+        editingId = stop ? stop.id : null;
+        els.dialogTitle.textContent = stop ? 'Edit stop' : 'Add a stop';
+        deleteButton.style.display = stop ? 'inline-flex' : 'none';
+        els.error.textContent = '';
+        els.citySelect.disabled = Boolean(stop);
+
+        if (stop) {
+          const known = stop.cityId && cities.some(city => city.id === stop.cityId);
+          els.citySelect.value = known ? stop.cityId : 'custom';
+          els.customName.value = known ? '' : stop.name;
+          els.customCountry.value = stop.country;
+          els.customLat.value = String(stop.lat);
+          els.customLon.value = String(stop.lon);
+          els.days.value = String(stop.days);
+          els.notes.value = stop.notes;
+        } else {
+          els.form.reset();
+          els.citySelect.disabled = false;
+          els.citySelect.value = cityId || '';
+          els.days.value = '2';
+        }
+        updateCustomFields();
+        els.dialog.showModal();
+        requestAnimationFrame(() => (els.citySelect.value ? els.days : els.citySelect).focus());
+      }
+
+      function closeDialog() {
+        els.dialog.close();
+        editingId = null;
+      }
+
+      function updateCustomFields() {
+        const custom = els.citySelect.value === 'custom';
+        els.customFields.classList.toggle('show', custom);
+        [els.customName, els.customLat, els.customLon].forEach(input => input.required = custom);
+      }
+
+      function saveForm(event) {
+        event.preventDefault();
+        els.error.textContent = '';
+        const days = Number(els.days.value);
+        if (!Number.isFinite(days) || days < 0 || days > 30) {
+          els.error.textContent = 'Enter a number of days between 0 and 30.';
+          els.days.focus();
+          return;
+        }
+
+        let candidate;
+        if (els.citySelect.value === 'custom') {
+          const name = els.customName.value.trim();
+          const lat = Number(els.customLat.value);
+          const lon = Number(els.customLon.value);
+          if (!name) {
+            els.error.textContent = 'Give your custom stop a name.';
+            els.customName.focus();
+            return;
+          }
+          if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat < MAP.minLat || lat > MAP.maxLat || lon < MAP.minLon || lon > MAP.maxLon) {
+            els.error.textContent = 'Use coordinates inside southern Spain or Morocco (latitude 29.3–38.5, longitude −10.8–−0.8).';
+            els.customLat.focus();
+            return;
+          }
+          candidate = { cityId: null, name, country: els.customCountry.value, lat, lon };
+        } else {
+          const city = cities.find(item => item.id === els.citySelect.value);
+          if (!city) {
+            els.error.textContent = 'Choose a city or add a custom place.';
+            els.citySelect.focus();
+            return;
+          }
+          candidate = { cityId: city.id, name: city.name, country: city.country, lat: city.lat, lon: city.lon };
+        }
+
+        const payload = { ...candidate, days, notes: els.notes.value.trim().slice(0, 500) };
+        if (editingId) {
+          const index = stops.findIndex(stop => stop.id === editingId);
+          if (index >= 0) stops[index] = { ...stops[index], ...payload };
+          showToast(`${payload.name} updated`);
+        } else {
+          stops.push({ id: cryptoId(), ...payload });
+          showToast(`${payload.name} added`);
+        }
+        closeDialog();
+        render();
+      }
+
+      function deleteStop(id) {
+        const stop = stops.find(item => item.id === id);
+        if (!stop) return;
+        if (!window.confirm(`Remove ${stop.name} from your route?`)) return;
+        stops = stops.filter(item => item.id !== id);
+        closeDialog();
+        render();
+        showToast(`${stop.name} removed`);
+      }
+
+      const deleteButton = document.createElement('button');
+      deleteButton.type = 'button';
+      deleteButton.className = 'text-btn danger';
+      deleteButton.textContent = 'Delete stop';
+      deleteButton.style.marginRight = 'auto';
+      deleteButton.addEventListener('click', () => editingId && deleteStop(editingId));
+      document.querySelector('.modal-actions').prepend(deleteButton);
+
+      document.getElementById('addStopButton').addEventListener('click', () => openDialog());
+      els.copyItinerary.addEventListener('click', copyItinerary);
+      els.zoomIn.addEventListener('click', () => zoomMap(mapView.scale * 1.35));
+      els.zoomOut.addEventListener('click', () => zoomMap(mapView.scale / 1.35));
+      els.resetMap.addEventListener('click', resetMapView);
+      els.tripMap.addEventListener('wheel', event => {
+        event.preventDefault();
+        const focal = eventToMapPoint(event);
+        zoomMap(mapView.scale * (event.deltaY < 0 ? 1.16 : 1 / 1.16), focal);
+      }, { passive: false });
+      els.tripMap.addEventListener('dblclick', event => {
+        event.preventDefault();
+        zoomMap(mapView.scale * 1.45, eventToMapPoint(event));
+      });
+      els.tripMap.addEventListener('pointerdown', event => {
+        if (mapView.scale <= 1.001 || (event.button !== undefined && event.button !== 0)) return;
+        if (event.target.closest && event.target.closest('.catalog-html-btn, .route-pin')) return;
+        panState = { pointerId: event.pointerId, start: eventToMapPoint(event), x: mapView.x, y: mapView.y };
+        els.tripMap.setPointerCapture(event.pointerId);
+        els.mapPanel.classList.add('is-panning');
+      });
+      els.tripMap.addEventListener('pointermove', event => {
+        if (!panState || panState.pointerId !== event.pointerId) return;
+        event.preventDefault();
+        const point = eventToMapPoint(event);
+        mapView = {
+          scale: mapView.scale,
+          x: panState.x + (point.x - panState.start.x),
+          y: panState.y + (point.y - panState.start.y)
+        };
+        applyMapView();
+      });
+      const endMapPan = event => {
+        if (!panState || panState.pointerId !== event.pointerId) return;
+        panState = null;
+        els.mapPanel.classList.remove('is-panning');
+        if (els.tripMap.hasPointerCapture(event.pointerId)) els.tripMap.releasePointerCapture(event.pointerId);
+      };
+      els.tripMap.addEventListener('pointerup', endMapPan);
+      els.tripMap.addEventListener('pointercancel', endMapPan);
+      document.getElementById('closeDialog').addEventListener('click', closeDialog);
+      document.getElementById('cancelDialog').addEventListener('click', closeDialog);
+      els.tripStartDate.addEventListener('change', () => {
+        if (!isDateInput(els.tripStartDate.value)) return;
+        tripMeta.startDate = els.tripStartDate.value;
+        render();
+      });
+      els.tripEndDate.addEventListener('change', () => {
+        if (!isDateInput(els.tripEndDate.value)) return;
+        tripMeta.endDate = els.tripEndDate.value;
+        render();
+      });
+      els.citySelect.addEventListener('change', updateCustomFields);
+      els.form.addEventListener('submit', saveForm);
+      els.dialog.addEventListener('close', () => { editingId = null; });
+      els.dialog.addEventListener('click', event => {
+        const rect = els.dialog.getBoundingClientRect();
+        if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) closeDialog();
+      });
+      drawCountries();
+      populateCitySelect();
+      render();
+    })();
+  </script>
+</body>
+</html>
