@@ -252,7 +252,29 @@
     .stop-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 850; }
     .stop-meta { margin-top: 3px; color: var(--ink-soft); font-size: 12px; }
     .stop-dates { margin-top: 5px; color: var(--blue-dark); font-size: 11px; font-weight: 800; }
-    .stop-note { margin-top: 6px; overflow: hidden; color: var(--ink); font-size: 12px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .stop-plan {
+      display: grid;
+      grid-template-columns: 20px minmax(0,1fr);
+      grid-column: 2 / -1;
+      gap: 7px;
+      margin-top: -2px;
+      padding: 8px 9px;
+      border: 1px solid rgba(47,127,131,.13);
+      border-radius: 11px;
+      background: linear-gradient(135deg, rgba(47,127,131,.08), rgba(255,253,248,.5));
+    }
+    .stop-plan-icon {
+      width: 20px;
+      height: 20px;
+      display: grid;
+      place-items: center;
+      border-radius: 7px;
+      color: var(--blue-dark);
+      background: rgba(255,255,255,.68);
+    }
+    .stop-plan-icon svg { width: 12px; height: 12px; }
+    .stop-plan-label { color: var(--blue-dark); font-size: 9px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+    .stop-plan-text { margin-top: 2px; overflow: hidden; color: var(--ink); font-size: 11px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
     .stop-actions { display: flex; align-items: center; gap: 1px; }
 
     .empty-state {
@@ -438,6 +460,31 @@
     .route-pin .pin-number { fill: #fff; font-size: 12px; font-weight: 900; text-anchor: middle; dominant-baseline: middle; pointer-events: none; }
     .route-pin .pin-label { fill: var(--ink); paint-order: stroke; stroke: var(--paper); stroke-width: 5; stroke-linejoin: round; font-size: 13px; font-weight: 850; text-anchor: middle; pointer-events: none; }
     .route-pin .pin-days { fill: var(--blue-dark); font-size: 10px; font-weight: 850; text-anchor: middle; paint-order: stroke; stroke: var(--paper); stroke-width: 4; stroke-linejoin: round; pointer-events: none; }
+
+    .stop-tooltip {
+      position: absolute;
+      z-index: 7;
+      width: min(292px, calc(100% - 24px));
+      padding: 13px 14px;
+      border: 1px solid rgba(25,57,54,.16);
+      border-radius: 16px;
+      color: var(--ink);
+      background: rgba(255,253,248,.98);
+      box-shadow: 0 12px 34px rgba(25,57,54,.2);
+      transform: translate(-50%, calc(-100% - 13px));
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity .12s ease, visibility .12s ease;
+    }
+    .stop-tooltip.is-visible { opacity: 1; visibility: visible; }
+    .stop-tooltip-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+    .stop-tooltip-kicker { color: var(--terracotta); font-size: 9px; font-weight: 900; letter-spacing: .09em; text-transform: uppercase; }
+    .stop-tooltip-title { margin-top: 2px; font-family: Georgia, "Times New Roman", serif; font-size: 20px; line-height: 1.05; }
+    .stop-tooltip-stay { flex: 0 0 auto; padding: 4px 7px; border-radius: 999px; color: var(--blue-dark); background: rgba(47,127,131,.1); font-size: 10px; font-weight: 850; }
+    .stop-tooltip-dates { margin-top: 7px; color: var(--blue-dark); font-size: 11px; font-weight: 850; }
+    .stop-tooltip-notes { margin-top: 9px; padding-top: 9px; border-top: 1px solid rgba(25,57,54,.1); color: var(--ink-soft); font-size: 11px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+    .stop-tooltip-notes.is-empty { font-style: italic; opacity: .72; }
 
     .map-key {
       position: absolute;
@@ -689,6 +736,7 @@
           </g>
         </svg>
         <div id="travelTooltip" class="travel-tooltip" role="tooltip" aria-hidden="true"></div>
+        <div id="stopTooltip" class="stop-tooltip" role="tooltip" aria-hidden="true"></div>
         <div class="map-tools" aria-label="Map zoom controls">
           <button id="zoomOut" class="map-tool-btn" type="button" aria-label="Zoom out">−</button>
           <span id="zoomLevel" class="zoom-readout" aria-live="polite">100%</span>
@@ -697,7 +745,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></svg>
           </button>
         </div>
-        <div class="map-key"><span class="map-key-dot"></span><span>Hover a route line for travel time · tap a city · scroll to zoom</span></div>
+        <div class="map-key"><span class="map-key-dot"></span><span>Hover cities for details · hover routes for travel time · scroll to zoom</span></div>
         <div id="toast" class="toast" role="status" aria-live="polite"></div>
       </section>
     </main>
@@ -751,8 +799,8 @@
         </div>
 
         <div class="field">
-          <label for="notesInput">Notes</label>
-          <textarea id="notesInput" maxlength="500" placeholder="Riad ideas, restaurants, activities, transport notes…"></textarea>
+          <label for="notesInput">Description / plan</label>
+          <textarea id="notesInput" maxlength="500" placeholder="Arrival, stay, activities, reservations, transport…"></textarea>
         </div>
         <p id="formError" class="form-error" role="alert"></p>
       </div>
@@ -840,6 +888,7 @@
         mapPanel: document.querySelector('.map-panel'),
         tripMap: document.getElementById('tripMap'),
         travelTooltip: document.getElementById('travelTooltip'),
+        stopTooltip: document.getElementById('stopTooltip'),
         mapViewport: document.getElementById('mapViewport'),
         zoomOut: document.getElementById('zoomOut'),
         zoomIn: document.getElementById('zoomIn'),
@@ -1241,11 +1290,23 @@
           dates.className = 'stop-dates';
           dates.textContent = formatRange(stop.scheduleStart, stop.scheduleEnd);
           copy.append(titleRow, meta, dates);
+          let plan = null;
           if (stop.notes) {
-            const note = document.createElement('div');
-            note.className = 'stop-note';
-            note.textContent = stop.notes;
-            copy.appendChild(note);
+            plan = document.createElement('div');
+            plan.className = 'stop-plan';
+            const noteIcon = document.createElement('span');
+            noteIcon.className = 'stop-plan-icon';
+            noteIcon.setAttribute('aria-hidden', 'true');
+            noteIcon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h11M8 12h11M8 18h7"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg>';
+            const noteCopy = document.createElement('div');
+            const noteLabel = document.createElement('div');
+            noteLabel.className = 'stop-plan-label';
+            noteLabel.textContent = 'Plan';
+            const noteText = document.createElement('div');
+            noteText.className = 'stop-plan-text';
+            noteText.textContent = stop.notes;
+            noteCopy.append(noteLabel, noteText);
+            plan.append(noteIcon, noteCopy);
           }
 
           const actions = document.createElement('div');
@@ -1259,6 +1320,7 @@
           const edit = actionButton(`Edit ${stop.name}`, editIcon(), () => openDialog(stop));
           actions.append(up, down, edit);
           card.append(handle, copy, actions);
+          if (plan) card.appendChild(plan);
           bindDrag(card);
           els.routeList.appendChild(card);
         });
@@ -1328,6 +1390,7 @@
       }
 
       function showTravelTooltip(anchor, travel, event) {
+        hideStopTooltip();
         els.routeLayer.querySelectorAll('[aria-describedby="travelTooltip"]').forEach(node => node.removeAttribute('aria-describedby'));
         anchor.setAttribute('aria-describedby', 'travelTooltip');
         els.travelTooltip.textContent = travel.label;
@@ -1342,8 +1405,58 @@
         els.travelTooltip.setAttribute('aria-hidden', 'true');
       }
 
+      function positionStopTooltip(anchor, event) {
+        const panelRect = els.mapPanel.getBoundingClientRect();
+        const anchorRect = anchor.getBoundingClientRect();
+        const followsPointer = event && event.pointerType === 'mouse';
+        const rawX = followsPointer ? event.clientX - panelRect.left : anchorRect.left + anchorRect.width / 2 - panelRect.left;
+        const rawY = followsPointer ? event.clientY - panelRect.top : anchorRect.top + anchorRect.height / 2 - panelRect.top;
+        const halfWidth = Math.min(146, Math.max(90, (panelRect.width - 24) / 2));
+        els.stopTooltip.style.left = `${clamp(rawX, halfWidth + 12, panelRect.width - halfWidth - 12)}px`;
+        els.stopTooltip.style.top = `${clamp(rawY, 142, panelRect.height - 24)}px`;
+      }
+
+      function showStopTooltip(anchor, stop, index, event) {
+        hideTravelTooltip();
+        els.pinLayer.querySelectorAll('[aria-describedby="stopTooltip"]').forEach(node => node.removeAttribute('aria-describedby'));
+        anchor.setAttribute('aria-describedby', 'stopTooltip');
+
+        const top = document.createElement('div');
+        top.className = 'stop-tooltip-top';
+        const heading = document.createElement('div');
+        const kicker = document.createElement('div');
+        kicker.className = 'stop-tooltip-kicker';
+        kicker.textContent = `Stop ${index + 1} · ${stop.country}`;
+        const title = document.createElement('div');
+        title.className = 'stop-tooltip-title';
+        title.textContent = stop.name;
+        heading.append(kicker, title);
+        const stay = document.createElement('span');
+        stay.className = 'stop-tooltip-stay';
+        stay.textContent = `${formatDays(stop.days)} ${Number(stop.days) === 1 ? 'day' : 'days'}`;
+        top.append(heading, stay);
+
+        const dates = document.createElement('div');
+        dates.className = 'stop-tooltip-dates';
+        dates.textContent = formatRange(stop.scheduleStart, stop.scheduleEnd);
+        const notes = document.createElement('div');
+        notes.className = `stop-tooltip-notes${stop.notes ? '' : ' is-empty'}`;
+        notes.textContent = stop.notes || 'No description added yet.';
+        els.stopTooltip.replaceChildren(top, dates, notes);
+        els.stopTooltip.className = 'stop-tooltip is-visible';
+        els.stopTooltip.setAttribute('aria-hidden', 'false');
+        positionStopTooltip(anchor, event);
+      }
+
+      function hideStopTooltip() {
+        els.pinLayer.querySelectorAll('[aria-describedby="stopTooltip"]').forEach(node => node.removeAttribute('aria-describedby'));
+        els.stopTooltip.className = 'stop-tooltip';
+        els.stopTooltip.setAttribute('aria-hidden', 'true');
+      }
+
       function renderMap(schedule) {
         hideTravelTooltip();
+        hideStopTooltip();
         els.routeLayer.replaceChildren();
         els.catalogLayer.replaceChildren();
         els.pinLayer.replaceChildren();
@@ -1476,10 +1589,21 @@
           const days = svg('text', { class: 'pin-days', y: 29 });
           days.textContent = `${formatDays(stop.days)} ${Number(stop.days) === 1 ? 'day' : 'days'}${stop.cityId === 'conil' ? ' · surf' : ''}`;
           group.append(number, label, days);
-          group.addEventListener('click', () => openDialog(stop));
+          group.addEventListener('pointerenter', event => showStopTooltip(group, stop, index, event));
+          group.addEventListener('pointermove', event => {
+            if (event.pointerType === 'mouse') positionStopTooltip(group, event);
+          });
+          group.addEventListener('pointerleave', hideStopTooltip);
+          group.addEventListener('focus', () => showStopTooltip(group, stop, index));
+          group.addEventListener('blur', hideStopTooltip);
+          group.addEventListener('click', () => {
+            hideStopTooltip();
+            openDialog(stop);
+          });
           group.addEventListener('keydown', event => {
             if (event.key === 'Enter' || event.key === ' ') {
               event.preventDefault();
+              hideStopTooltip();
               openDialog(stop);
             }
           });
@@ -1611,6 +1735,7 @@
         if (event.target.closest && event.target.closest('.travel-segment-hit')) return;
         els.routeLayer.querySelectorAll('.travel-segment.is-active').forEach(node => node.classList.remove('is-active'));
         hideTravelTooltip();
+        hideStopTooltip();
       });
       els.tripMap.addEventListener('pointerdown', event => {
         if (mapView.scale <= 1.001 || (event.button !== undefined && event.button !== 0)) return;
