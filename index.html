@@ -309,26 +309,52 @@
     .route-line { fill: none; stroke: var(--terracotta); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
     .route-shadow { fill: none; stroke: rgba(255,255,255,.8); stroke-width: 8; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
     .route-ferry { fill: none; stroke: var(--blue-dark); stroke-width: 4; stroke-dasharray: 8 7; vector-effect: non-scaling-stroke; }
-    .route-time-label { overflow: visible; pointer-events: none; }
-    .route-time-pill {
-      width: 140px;
-      min-height: 24px;
+    .travel-segment-hit {
+      fill: none;
+      stroke: transparent;
+      stroke-width: 22;
+      vector-effect: non-scaling-stroke;
+      pointer-events: stroke;
+      cursor: help;
+      outline: none;
+      transition: stroke .15s ease;
+    }
+    .travel-segment:hover .travel-segment-hit,
+    .travel-segment.is-active .travel-segment-hit,
+    .travel-segment-hit:focus-visible {
+      stroke: rgba(206,85,52,.22);
+    }
+    .travel-tooltip {
+      position: absolute;
+      z-index: 6;
+      width: max-content;
+      max-width: 200px;
+      min-height: 30px;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 3px 7px;
-      border: 1px solid rgba(25,57,54,.16);
-      border-radius: 999px;
+      padding: 7px 11px;
+      border: 1px solid rgba(25,57,54,.18);
+      border-radius: 12px;
       color: var(--blue-dark);
-      background: rgba(255,253,248,.94);
-      box-shadow: 0 3px 12px rgba(25,57,54,.12);
-      font-size: 10px;
+      background: rgba(255,253,248,.98);
+      box-shadow: 0 7px 22px rgba(25,57,54,.2);
+      font-size: 11px;
       font-weight: 850;
-      line-height: 1.15;
+      line-height: 1.25;
       text-align: center;
       white-space: pre-line;
+      transform: translate(-50%, calc(-100% - 12px));
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity .12s ease, visibility .12s ease, transform .12s ease;
     }
-    .route-time-pill.is-highlight {
+    .travel-tooltip.is-visible {
+      opacity: 1;
+      visibility: visible;
+    }
+    .travel-tooltip.is-highlight {
       border-color: rgba(206,85,52,.45);
       color: #8d341f;
       background: rgba(255,238,218,.96);
@@ -663,6 +689,7 @@
             <g id="pinLayer"></g>
           </g>
         </svg>
+        <div id="travelTooltip" class="travel-tooltip" role="tooltip" aria-hidden="true"></div>
         <div class="map-tools" aria-label="Map zoom controls">
           <button id="zoomOut" class="map-tool-btn" type="button" aria-label="Zoom out">−</button>
           <span id="zoomLevel" class="zoom-readout" aria-live="polite">100%</span>
@@ -671,7 +698,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></svg>
           </button>
         </div>
-        <div class="map-key"><span class="map-key-dot"></span><span>Tap a city · scroll to zoom · drag to move</span></div>
+        <div class="map-key"><span class="map-key-dot"></span><span>Hover a route line for travel time · tap a city · scroll to zoom</span></div>
         <div id="toast" class="toast" role="status" aria-live="polite"></div>
       </section>
     </main>
@@ -784,12 +811,12 @@
       ];
 
       const SPAIN_TRAVEL_TIMES = {
-        'malaga>granada': { label: 'Train ≈1h25', dx: 70, dy: 18 },
-        'granada>cordoba': { label: 'Train ≈1h45', dx: 110, dy: -30 },
-        'cordoba>seville': { label: 'Train 45m · wins\nCar ≈1h30', dx: -100, dy: -28, highlight: true },
-        'seville>cadiz': { label: 'Train ≈1h40', dx: -105, dy: -23 },
-        'cadiz>conil': { label: 'No train\nBus ≈1h · car 35m', dx: -108, dy: 43, highlight: true },
-        'conil>tarifa': { label: 'No train\nBus/car ≈55m', dx: 150, dy: 25 }
+        'malaga>granada': { label: 'Train ≈1h25' },
+        'granada>cordoba': { label: 'Train ≈1h45' },
+        'cordoba>seville': { label: 'Train 45m · faster\nCar ≈1h30', highlight: true },
+        'seville>cadiz': { label: 'Train ≈1h40' },
+        'cadiz>conil': { label: 'No train\nBus ≈1h · car 35m', highlight: true },
+        'conil>tarifa': { label: 'No train\nBus/car ≈55m' }
       };
 
       // Natural Earth 1:110m country outlines, projected locally below.
@@ -813,6 +840,7 @@
         routeList: document.getElementById('routeList'),
         mapPanel: document.querySelector('.map-panel'),
         tripMap: document.getElementById('tripMap'),
+        travelTooltip: document.getElementById('travelTooltip'),
         mapViewport: document.getElementById('mapViewport'),
         zoomOut: document.getElementById('zoomOut'),
         zoomIn: document.getElementById('zoomIn'),
@@ -890,11 +918,6 @@
           node.setAttribute('transform', `translate(${x} ${y}) scale(${inverseScale.toFixed(4)})`);
         });
         els.catalogLayer.querySelectorAll('.catalog-fo').forEach(node => {
-          const x = node.getAttribute('data-map-x');
-          const y = node.getAttribute('data-map-y');
-          node.setAttribute('transform', `translate(${x} ${y}) scale(${inverseScale.toFixed(4)})`);
-        });
-        els.routeLayer.querySelectorAll('.route-time-label').forEach(node => {
           const x = node.getAttribute('data-map-x');
           const y = node.getAttribute('data-map-y');
           node.setAttribute('transform', `translate(${x} ${y}) scale(${inverseScale.toFixed(4)})`);
@@ -1295,7 +1318,33 @@
         });
       }
 
+      function positionTravelTooltip(anchor, event) {
+        const panelRect = els.mapPanel.getBoundingClientRect();
+        const anchorRect = anchor.getBoundingClientRect();
+        const followsPointer = event && event.pointerType === 'mouse';
+        const rawX = followsPointer ? event.clientX - panelRect.left : anchorRect.left + anchorRect.width / 2 - panelRect.left;
+        const rawY = followsPointer ? event.clientY - panelRect.top : anchorRect.top + anchorRect.height / 2 - panelRect.top;
+        els.travelTooltip.style.left = `${clamp(rawX, 112, panelRect.width - 112)}px`;
+        els.travelTooltip.style.top = `${clamp(rawY, 74, panelRect.height - 24)}px`;
+      }
+
+      function showTravelTooltip(anchor, travel, event) {
+        els.routeLayer.querySelectorAll('[aria-describedby="travelTooltip"]').forEach(node => node.removeAttribute('aria-describedby'));
+        anchor.setAttribute('aria-describedby', 'travelTooltip');
+        els.travelTooltip.textContent = travel.label;
+        els.travelTooltip.className = `travel-tooltip is-visible${travel.highlight ? ' is-highlight' : ''}`;
+        els.travelTooltip.setAttribute('aria-hidden', 'false');
+        positionTravelTooltip(anchor, event);
+      }
+
+      function hideTravelTooltip() {
+        els.routeLayer.querySelectorAll('[aria-describedby="travelTooltip"]').forEach(node => node.removeAttribute('aria-describedby'));
+        els.travelTooltip.className = 'travel-tooltip';
+        els.travelTooltip.setAttribute('aria-hidden', 'true');
+      }
+
       function renderMap(schedule) {
+        hideTravelTooltip();
         els.routeLayer.replaceChildren();
         els.catalogLayer.replaceChildren();
         els.pinLayer.replaceChildren();
@@ -1313,23 +1362,43 @@
             if (travel) {
               const pa = project(a.lon, a.lat);
               const pb = project(b.lon, b.lat);
-              const x = ((pa.x + pb.x) / 2) + travel.dx;
-              const y = ((pa.y + pb.y) / 2) + travel.dy;
-              const label = svg('foreignObject', {
-                class: 'route-time-label',
-                x: -70,
-                y: -16,
-                width: 140,
-                height: 38,
-                'data-map-x': x.toFixed(1),
-                'data-map-y': y.toFixed(1),
-                transform: `translate(${x.toFixed(1)} ${y.toFixed(1)})`
+              const segment = svg('g', { class: 'travel-segment' });
+              const hit = svg('path', {
+                class: 'travel-segment-hit',
+                d: `M${pa.x.toFixed(1)},${pa.y.toFixed(1)} L${pb.x.toFixed(1)},${pb.y.toFixed(1)}`,
+                tabindex: '0',
+                role: 'button',
+                'aria-label': `Travel from ${a.name} to ${b.name}: ${travel.label.replace(/\n/g, '. ')}`
               });
-              const pill = document.createElement('div');
-              pill.className = `route-time-pill${travel.highlight ? ' is-highlight' : ''}`;
-              pill.textContent = travel.label;
-              label.appendChild(pill);
-              els.routeLayer.appendChild(label);
+              segment.appendChild(hit);
+              hit.addEventListener('pointerenter', event => {
+                els.routeLayer.querySelectorAll('.travel-segment.is-active').forEach(node => node.classList.remove('is-active'));
+                showTravelTooltip(hit, travel, event);
+              });
+              hit.addEventListener('pointermove', event => {
+                if (event.pointerType === 'mouse') positionTravelTooltip(hit, event);
+              });
+              hit.addEventListener('pointerleave', () => {
+                if (!segment.classList.contains('is-active')) hideTravelTooltip();
+              });
+              hit.addEventListener('focus', () => showTravelTooltip(hit, travel));
+              hit.addEventListener('blur', () => {
+                if (!segment.classList.contains('is-active')) hideTravelTooltip();
+              });
+              hit.addEventListener('click', event => {
+                event.stopPropagation();
+                const wasActive = segment.classList.contains('is-active');
+                els.routeLayer.querySelectorAll('.travel-segment.is-active').forEach(node => node.classList.remove('is-active'));
+                segment.classList.toggle('is-active', !wasActive);
+                if (wasActive) hideTravelTooltip();
+                else showTravelTooltip(hit, travel);
+              });
+              hit.addEventListener('keydown', event => {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+                hit.click();
+              });
+              els.routeLayer.appendChild(segment);
             }
             if ((a.cityId === 'tarifa' && b.cityId === 'tangier') || (a.cityId === 'tangier' && b.cityId === 'tarifa')) {
               const pa = project(a.lon, a.lat);
@@ -1539,9 +1608,14 @@
         event.preventDefault();
         zoomMap(mapView.scale * 1.45, eventToMapPoint(event));
       });
+      els.tripMap.addEventListener('click', event => {
+        if (event.target.closest && event.target.closest('.travel-segment-hit')) return;
+        els.routeLayer.querySelectorAll('.travel-segment.is-active').forEach(node => node.classList.remove('is-active'));
+        hideTravelTooltip();
+      });
       els.tripMap.addEventListener('pointerdown', event => {
         if (mapView.scale <= 1.001 || (event.button !== undefined && event.button !== 0)) return;
-        if (event.target.closest && event.target.closest('.catalog-html-btn, .route-pin')) return;
+        if (event.target.closest && event.target.closest('.catalog-html-btn, .route-pin, .travel-segment-hit')) return;
         panState = { pointerId: event.pointerId, start: eventToMapPoint(event), x: mapView.x, y: mapView.y };
         els.tripMap.setPointerCapture(event.pointerId);
         els.mapPanel.classList.add('is-panning');
