@@ -818,7 +818,7 @@
       const STORAGE_KEY = 'between-two-shores-trip-v1';
       const TRIP_META_KEY = 'between-two-shores-dates-v1';
       const ITINERARY_VERSION_KEY = 'between-two-shores-itinerary-version-v1';
-      const DEFAULT_ITINERARY_VERSION = '2026-08-08-conil-route-v1';
+      const DEFAULT_ITINERARY_VERSION = '2026-08-09-published-descriptions-v2';
       const DEFAULT_TRIP_META = { startDate: '2026-08-23', endDate: '2026-09-06' };
       const SVG_NS = 'http://www.w3.org/2000/svg';
       const MAP = { minLon: -10.8, maxLon: -0.8, minLat: 29.3, maxLat: 38.5, width: 1000, height: 760 };
@@ -844,12 +844,12 @@
       ];
 
       const DEFAULT_ROUTE = [
-        { cityId: 'malaga', days: 1 },
-        { cityId: 'granada', days: 2 },
-        { cityId: 'cordoba', days: 0 },
-        { cityId: 'seville', days: 2 },
-        { cityId: 'cadiz', days: 1 },
-        { cityId: 'conil', days: 0 },
+        { cityId: 'malaga', days: 1, notes: 'Arrive: Aug 23 at 8am. Leave: Aug 24, train at 9:20am. Stay: Coeo Hernan Ruiz Rooftop Pool Hostel.' },
+        { cityId: 'granada', days: 2, notes: 'Arrive: afternoon Aug 24. Leave: Aug 26, train 11:04am → 12:36pm. Stay: Toc Hostel Granada. Activity: Alhambra (booked).' },
+        { cityId: 'cordoba', days: 0, notes: 'Arrive: 12:36pm. Leave: train to Seville at 5:03pm → 5:55pm.' },
+        { cityId: 'seville', days: 2, notes: 'Arrive: Aug 26 at 5:55pm. Leave: Aug 28, train to Cádiz at 9:59am → 11:52am. Stay: La Banda Rooftop Hostel. Activity: Real Alcázar of Seville (booked).' },
+        { cityId: 'cadiz', days: 1, notes: 'Arrive: Aug 28 at 11:52am. Leave: very early Aug 29. Stay: El Armador Casa Palacio Cádiz.' },
+        { cityId: 'conil', days: 0, notes: 'Arrive: 9am. Surf: 10am–12pm. Leave: 4pm.' },
         { cityId: 'tarifa', days: 1 },
         { cityId: 'tangier', days: 1 },
         { cityId: 'chefchaouen', days: 1 },
@@ -1039,16 +1039,9 @@
 
       function loadStops() {
         try {
-          if (localStorage.getItem(ITINERARY_VERSION_KEY) !== DEFAULT_ITINERARY_VERSION) {
-            const defaults = makeDefaultStops();
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(defaults));
-            localStorage.setItem(TRIP_META_KEY, JSON.stringify(DEFAULT_TRIP_META));
-            localStorage.setItem(ITINERARY_VERSION_KEY, DEFAULT_ITINERARY_VERSION);
-            return defaults;
-          }
           const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY));
-          if (!Array.isArray(parsed)) return makeDefaultStops();
-          return parsed.filter(stop => stop && typeof stop.name === 'string' && Number.isFinite(Number(stop.lat)) && Number.isFinite(Number(stop.lon))).map(stop => {
+          const hasStoredStops = Array.isArray(parsed);
+          const loaded = hasStoredStops ? parsed.filter(stop => stop && typeof stop.name === 'string' && Number.isFinite(Number(stop.lat)) && Number.isFinite(Number(stop.lon))).map(stop => {
             const migrateSurfStop = stop.cityId === 'el-palmar';
             return {
               id: String(stop.id || cryptoId()),
@@ -1060,7 +1053,21 @@
               days: Math.max(0, Math.min(30, Number(stop.days) || 0)),
               notes: String(stop.notes || '').slice(0, 500)
             };
-          });
+          }) : makeDefaultStops();
+
+          if (localStorage.getItem(ITINERARY_VERSION_KEY) !== DEFAULT_ITINERARY_VERSION) {
+            const publishedNotes = new Map(DEFAULT_ROUTE.filter(stop => stop.notes).map(stop => [stop.cityId, stop.notes]));
+            const migrated = loaded.map(stop => {
+              const defaultNotes = publishedNotes.get(stop.cityId);
+              return !String(stop.notes || '').trim() && defaultNotes ? { ...stop, notes: defaultNotes } : stop;
+            });
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+            if (!hasStoredStops) localStorage.setItem(TRIP_META_KEY, JSON.stringify(DEFAULT_TRIP_META));
+            localStorage.setItem(ITINERARY_VERSION_KEY, DEFAULT_ITINERARY_VERSION);
+            return migrated;
+          }
+
+          return loaded;
         } catch (_) {
           return makeDefaultStops();
         }
@@ -1077,7 +1084,7 @@
             lat: city.lat,
             lon: city.lon,
             days: routeStop.days,
-            notes: ''
+            notes: routeStop.notes || ''
           };
         });
       }
