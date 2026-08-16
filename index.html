@@ -1139,21 +1139,23 @@
       }
 
       function formatMoment(date) {
-        const base = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(date);
+        const base = new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(date);
         const hour = date.getUTCHours();
         return hour === 12 ? `${base}, noon` : base;
       }
 
       function formatRange(start, end, compact = false) {
         if (compact) {
-          const formatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
-          return `${formatter.format(start)}–${formatter.format(end)}`;
+          const weekday = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: 'UTC' });
+          const date = new Intl.DateTimeFormat('en-US', { month: 'numeric', day: 'numeric', timeZone: 'UTC' });
+          return `${weekday.format(start)} ${date.format(start)} → ${weekday.format(end)} ${date.format(end)}`;
         }
         return `${formatMoment(start)} → ${formatMoment(end)}`;
       }
 
       function formatCopyMoment(date) {
         const base = new Intl.DateTimeFormat('en-US', {
+          weekday: 'short',
           month: 'short',
           day: 'numeric',
           year: 'numeric',
@@ -1305,7 +1307,7 @@
           meta.textContent = `${stop.country} · ${formatDays(stop.days)} ${Number(stop.days) === 1 ? 'day' : 'days'}`;
           const dates = document.createElement('div');
           dates.className = 'stop-dates';
-          dates.textContent = formatRange(stop.scheduleStart, stop.scheduleEnd);
+          dates.textContent = formatRange(stop.scheduleStart, stop.scheduleEnd, true);
           copy.append(titleRow, meta, dates);
           let plan = null;
           if (stop.notes) {
