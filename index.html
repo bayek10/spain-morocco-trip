@@ -235,7 +235,7 @@
     .drag-handle:active { cursor: grabbing; }
     .drag-handle svg { width: 18px; }
 
-    .stop-copy { min-width: 0; }
+    .stop-copy { min-width: 0; cursor: text; user-select: text; -webkit-user-select: text; }
     .stop-title-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
     .stop-number {
       width: 21px;
@@ -262,6 +262,9 @@
       border: 1px solid rgba(47,127,131,.13);
       border-radius: 11px;
       background: linear-gradient(135deg, rgba(47,127,131,.08), rgba(255,253,248,.5));
+      cursor: text;
+      user-select: text;
+      -webkit-user-select: text;
     }
     .stop-plan-icon {
       width: 20px;
@@ -1328,6 +1331,8 @@
           actions.append(up, down, edit);
           card.append(handle, copy, actions);
           if (plan) card.appendChild(plan);
+          bindTextSelection(card, copy);
+          if (plan) bindTextSelection(card, plan);
           bindDrag(card);
           els.routeList.appendChild(card);
         });
@@ -1358,6 +1363,19 @@
         const [moved] = stops.splice(from, 1);
         stops.splice(to, 0, moved);
         render();
+      }
+
+      function bindTextSelection(card, element) {
+        element.addEventListener('mousedown', () => {
+          card.draggable = false;
+          const restoreDragging = () => {
+            card.draggable = true;
+            window.removeEventListener('mouseup', restoreDragging);
+            window.removeEventListener('blur', restoreDragging);
+          };
+          window.addEventListener('mouseup', restoreDragging, { once: true });
+          window.addEventListener('blur', restoreDragging, { once: true });
+        });
       }
 
       function bindDrag(card) {
